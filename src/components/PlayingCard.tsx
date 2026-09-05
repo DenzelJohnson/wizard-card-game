@@ -76,21 +76,28 @@ export function PlayingCard({
   if (faceDown) {
     return (
       <span className="playing-card playing-card--back" role="img" aria-label="Face-down card">
-        Card back
+        <span className="playing-card__back-ornament" aria-hidden="true">
+          <span className="playing-card__back-rune">✦</span>
+        </span>
       </span>
     );
   }
 
   const name = cardName(card);
   const content = <CardFace card={card} />;
+  const suit = card.kind === 'suited' ? card.suit : undefined;
+  const cardClassName = `playing-card playing-card--${card.kind}`;
 
   if (onPlay !== undefined) {
     return (
       <button
         type="button"
-        className={`playing-card${playable ? ' playing-card--playable' : ' playing-card--disabled'}`}
+        className={`${cardClassName}${
+          playable ? ' playing-card--playable' : ' playing-card--disabled'
+        }`}
         data-card-id={card.id}
         data-kind={card.kind}
+        data-suit={suit}
         disabled={!playable}
         aria-label={playable ? `Play ${name}` : `${name} — ${disabledReason}`}
         onClick={playable ? onPlay : undefined}
@@ -102,9 +109,10 @@ export function PlayingCard({
 
   return (
     <span
-      className="playing-card playing-card--played"
+      className={`${cardClassName} playing-card--played`}
       data-card-id={card.id}
       data-kind={card.kind}
+      data-suit={suit}
       role="img"
       aria-label={name}
     >
@@ -115,17 +123,60 @@ export function PlayingCard({
 
 function CardFace({ card }: { readonly card: Card }) {
   if (card.kind === 'wizard') {
-    return <>Wizard</>;
+    return (
+      <span className="playing-card__face playing-card__face--wizard" aria-hidden="true">
+        <CardCorner rank="W" suit="✦" position="top" />
+        <span className="playing-card__rune">
+          <span>✦</span>
+          <span>◇</span>
+          <span>✦</span>
+        </span>
+        <span className="playing-card__special-label">Wizard</span>
+        <CardCorner rank="W" suit="✦" position="bottom" />
+      </span>
+    );
   }
   if (card.kind === 'jester') {
-    return <>Jester</>;
+    return (
+      <span className="playing-card__face playing-card__face--jester" aria-hidden="true">
+        <CardCorner rank="J" suit="◆" position="top" />
+        <span className="playing-card__bells">
+          <span>◆</span>
+          <span>◇</span>
+          <span>◆</span>
+        </span>
+        <span className="playing-card__special-label">Jester</span>
+        <CardCorner rank="J" suit="◆" position="bottom" />
+      </span>
+    );
   }
 
+  const symbol = suitSymbol(card.suit);
   return (
-    <>
-      <span aria-hidden="true">{RANK_SYMBOLS[card.rank]}</span>{' '}
-      <span aria-hidden="true">{suitSymbol(card.suit)}</span>{' '}
-      <span>{suitName(card.suit)}</span>
-    </>
+    <span className="playing-card__face playing-card__face--suited" aria-hidden="true">
+      <CardCorner rank={RANK_SYMBOLS[card.rank]} suit={symbol} position="top" />
+      <span className="playing-card__pip">{symbol}</span>
+      <span className="playing-card__suit-name">
+        <span>{symbol}</span> {suitName(card.suit)}
+      </span>
+      <CardCorner rank={RANK_SYMBOLS[card.rank]} suit={symbol} position="bottom" />
+    </span>
+  );
+}
+
+function CardCorner({
+  rank,
+  suit,
+  position,
+}: {
+  readonly rank: string;
+  readonly suit: string;
+  readonly position: 'top' | 'bottom';
+}) {
+  return (
+    <span className={`playing-card__corner playing-card__corner--${position}`}>
+      <span className="playing-card__rank">{rank}</span>
+      <span className="playing-card__suit">{suit}</span>
+    </span>
   );
 }

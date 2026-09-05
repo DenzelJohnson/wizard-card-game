@@ -40,27 +40,37 @@ export function MatchResult({ state, onNewMatch, onHome }: MatchResultProps) {
 
   return (
     <section className="match-result" aria-labelledby="match-result-title">
+      <span className="match-result__ornament" aria-hidden="true">✦ ◆ ✦</span>
       <h2 id="match-result-title">Match complete</h2>
-      <p role="status" aria-live="polite">
+      <p className="match-result__announcement" role="status" aria-live="polite">
         {winners.length === 1
           ? `${winners[0]} win${winnerIds[0] === 'human' ? '' : 's'} with ${formatNumber(winningScore)} points!`
           : `${joinNames(winners)} share the win with ${formatNumber(winningScore)} points!`}
       </p>
-      <ol aria-label="Final standings">
+      <ol className="match-result__standings" aria-label="Final standings">
         {standings.map(({ player, score, rank }) => (
-          <li key={player.id} value={rank}>
+          <li
+            className={winnerIds.includes(player.id) ? 'match-result__winner' : undefined}
+            key={player.id}
+            value={rank}
+          >
             {player.name} — {formatNumber(score)}
           </li>
         ))}
       </ol>
       <div className="result-actions">
-        <button ref={scoreSheetButtonRef} type="button" onClick={() => setScoreSheetOpen(true)}>
+        <button
+          className="button button--secondary"
+          ref={scoreSheetButtonRef}
+          type="button"
+          onClick={() => setScoreSheetOpen(true)}
+        >
           Score Sheet
         </button>
-        <button type="button" onClick={onNewMatch}>
+        <button className="button button--primary" type="button" onClick={onNewMatch}>
           New Match
         </button>
-        <button type="button" onClick={onHome}>
+        <button className="button button--secondary" type="button" onClick={onHome}>
           Return Home
         </button>
       </div>

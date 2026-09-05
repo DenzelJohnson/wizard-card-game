@@ -12,11 +12,18 @@ export function TrumpPanel({ actions, onAction }: TrumpPanelProps) {
   return (
     <fieldset className="decision-panel trump-panel">
       <legend>Choose trump</legend>
-      {actions.map((action) => (
-        <button key={action.suit} type="button" onClick={() => onAction(action)}>
-          {suitSymbol(action.suit)} {suitName(action.suit)}
-        </button>
-      ))}
+      <div className="decision-panel__options">
+        {actions.map((action) => (
+          <button
+            className="decision-button decision-button--suit"
+            key={action.suit}
+            type="button"
+            onClick={() => onAction(action)}
+          >
+            {suitSymbol(action.suit)} {suitName(action.suit)}
+          </button>
+        ))}
+      </div>
     </fieldset>
   );
 }

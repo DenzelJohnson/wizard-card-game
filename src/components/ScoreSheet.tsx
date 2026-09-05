@@ -32,16 +32,25 @@ export function ScoreSheet({
       returnFocusRef={returnFocusRef}
       className="score-sheet-dialog"
     >
-      <h2 id={TITLE_ID}>Score sheet</h2>
-      <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Close score sheet">
-        Close
-      </button>
+      <div className="dialog-heading dialog-heading--sticky">
+        <span className="dialog-heading__rune" aria-hidden="true">✦</span>
+        <h2 id={TITLE_ID}>Score sheet</h2>
+        <button
+          className="dialog-close"
+          ref={closeButtonRef}
+          type="button"
+          onClick={onClose}
+          aria-label="Close score sheet"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
 
       {roundScores.length === 0 ? (
         <p>No rounds scored yet.</p>
       ) : (
         <div className="table-scroll" tabIndex={0} aria-label="Scrollable score sheet">
-          <table>
+          <table className="score-table">
             <caption>Complete score sheet</caption>
             <thead>
               <tr>
@@ -75,8 +84,12 @@ export function ScoreSheet({
                       <th scope="row">{player.name}</th>
                       <td>{score.bid}</td>
                       <td>{score.tricks}</td>
-                      <td>{formatSigned(score.delta)}</td>
-                      <td>{formatNumber(score.cumulative)}</td>
+                      <td className={score.delta >= 0 ? 'score--positive' : 'score--negative'}>
+                        {formatSigned(score.delta)}
+                      </td>
+                      <td className={score.cumulative >= 0 ? 'score--positive' : 'score--negative'}>
+                        {formatNumber(score.cumulative)}
+                      </td>
                     </tr>
                   );
                 })}

@@ -135,7 +135,7 @@ export function AccessibleDialog({
   return (
     <dialog
       ref={dialogRef}
-      className={className}
+      className={`app-dialog${className ? ` ${className}` : ''}`}
       open={supportsModalDialog() ? undefined : true}
       role="dialog"
       aria-modal="true"

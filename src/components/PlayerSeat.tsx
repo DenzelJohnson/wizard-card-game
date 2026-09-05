@@ -27,24 +27,33 @@ export function PlayerSeat({
   winner,
   hiddenCardCount,
 }: PlayerSeatProps) {
+  const stateClasses = [
+    active ? 'player-seat--active' : '',
+    dealer ? 'player-seat--dealer' : '',
+    leader ? 'player-seat--leader' : '',
+    winner ? 'player-seat--winner' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <section
-      className={`player-seat player-seat--${position}`}
+      className={`player-seat player-seat--${position}${stateClasses ? ` ${stateClasses}` : ''}`}
       data-seat={position}
       aria-label={`${player.name} seat`}
     >
-      <h2>{player.name}</h2>
+      <h2 className="player-seat__name">{player.name}</h2>
       <p className="seat-summary">
-        <span>Score: {score}</span>{' '}
-        <span>Bid: {bid ?? '—'}</span>{' '}
-        <span>Tricks: {tricksWon}</span>
+        <span className="seat-summary__score">Score: {score}</span>{' '}
+        <span className="seat-summary__bid">Bid: {bid ?? '—'}</span>{' '}
+        <span className="seat-summary__tricks">Tricks: {tricksWon}</span>
       </p>
       {dealer || active || leader || winner ? (
         <p className="seat-markers">
-          {dealer ? <span>Dealer</span> : null}
-          {active ? <span>Active</span> : null}
-          {leader ? <span>Leader</span> : null}
-          {winner ? <span>Winner</span> : null}
+          {dealer ? <span className="seat-marker seat-marker--dealer">Dealer</span> : null}
+          {active ? <span className="seat-marker seat-marker--active">Active</span> : null}
+          {leader ? <span className="seat-marker seat-marker--leader">Leader</span> : null}
+          {winner ? <span className="seat-marker seat-marker--winner">Winner</span> : null}
         </p>
       ) : null}
       {hiddenCardCount !== undefined ? (
@@ -55,12 +64,14 @@ export function PlayerSeat({
             hiddenCardCount === 1 ? 'card' : 'cards'
           }`}
         >
-          <span aria-hidden="true">
+          <span className="hidden-card-count" aria-hidden="true">
             {hiddenCardCount} {hiddenCardCount === 1 ? 'card' : 'cards'}
           </span>
           {Array.from({ length: hiddenCardCount }, (_, index) => (
             <span key={index} className="playing-card playing-card--back" aria-hidden="true">
-              Card back
+              <span className="playing-card__back-ornament">
+                <span className="playing-card__back-rune">✦</span>
+              </span>
             </span>
           ))}
         </div>

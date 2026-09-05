@@ -90,9 +90,9 @@ export function GameTable({
   return (
     <main className="game-table" aria-labelledby="game-table-heading">
       <header className="table-status">
-        <h1 id="game-table-heading">Wizard game table</h1>
-        <p>Round {state.round} of 15</p>
-        <p role="status" aria-live="polite">
+        <h1 id="game-table-heading" className="sr-only">Wizard game table</h1>
+        <p className="table-status__round">Round {state.round} of 15</p>
+        <p className="table-status__prompt" role="status" aria-live="polite">
           {phasePrompt(state)}
         </p>
         {storageWarning ? <StorageWarning /> : null}
@@ -242,7 +242,9 @@ function TrumpDisplay({ state }: { readonly state: GameState }) {
   return (
     <section className="trump-area" aria-label="Trump">
       <h2>Trump: {trumpText}</h2>
-      <p>{upCardContext(state.revealedUpCard, state.trump, dealerChoosing)}</p>
+      <p className="trump-area__context">
+        {upCardContext(state.revealedUpCard, state.trump, dealerChoosing)}
+      </p>
     </section>
   );
 }

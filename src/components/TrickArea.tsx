@@ -15,10 +15,15 @@ export function TrickArea({ plays, players }: TrickAreaProps) {
       {plays.length === 0 ? (
         <p>No cards played yet.</p>
       ) : (
-        <ol>
+        <ol className="trick-area__plays">
           {plays.map((play, index) => (
-            <li key={`${index}-${play.playerId}-${play.card.id}`}>
-              <span>{playerNames.get(play.playerId) ?? play.playerId}</span>
+            <li
+              key={`${index}-${play.playerId}-${play.card.id}`}
+              className={`trick-play trick-play--${play.playerId}`}
+            >
+              <span className="trick-play__name">
+                {playerNames.get(play.playerId) ?? play.playerId}
+              </span>
               <PlayingCard card={play.card} playable={false} />
             </li>
           ))}

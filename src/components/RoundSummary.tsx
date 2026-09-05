@@ -19,23 +19,30 @@ export function RoundSummary({ state, onContinue }: RoundSummaryProps) {
       {record === undefined ? (
         <p>No round score is available.</p>
       ) : (
-        <ul aria-label={`Round ${roundNumber} scores`}>
+        <ul className="round-summary__scores" aria-label={`Round ${roundNumber} scores`}>
           {record.players.map((score) => {
             const name = state.players.find(({ id }) => id === score.playerId)?.name ?? score.playerId;
             return (
-              <li key={score.playerId} aria-label={name}>
+              <li
+                key={score.playerId}
+                className={`round-summary__player ${
+                  score.delta >= 0 ? 'score--positive' : 'score--negative'
+                }`}
+                aria-label={name}
+              >
                 <h3>{name}</h3>
-                <p>
+                <p className="round-summary__bid">
                   Bid {score.bid}; Won {score.tricks} {score.tricks === 1 ? 'trick' : 'tricks'}
                 </p>
-                <p>{scoreExplanation(score)}</p>
-                <p>Total {formatNumber(score.cumulative)}</p>
+                <p className="round-summary__calculation">{scoreExplanation(score)}</p>
+                <p className="round-summary__total">Total {formatNumber(score.cumulative)}</p>
               </li>
             );
           })}
         </ul>
       )}
       <button
+        className="button button--primary round-summary__continue"
         type="button"
         onClick={() => {
           if (continuedRef.current) {

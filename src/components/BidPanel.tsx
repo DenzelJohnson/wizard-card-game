@@ -11,15 +11,18 @@ export function BidPanel({ actions, onAction }: BidPanelProps) {
   return (
     <fieldset className="decision-panel bid-panel">
       <legend>Choose your bid</legend>
-      {actions.map((action) => (
-        <button
-          key={`${action.playerId}-${action.bid}`}
-          type="button"
-          onClick={() => onAction(action)}
-        >
-          Bid {action.bid}
-        </button>
-      ))}
+      <div className="decision-panel__options">
+        {actions.map((action) => (
+          <button
+            className="decision-button"
+            key={`${action.playerId}-${action.bid}`}
+            type="button"
+            onClick={() => onAction(action)}
+          >
+            Bid {action.bid}
+          </button>
+        ))}
+      </div>
     </fieldset>
   );
 }

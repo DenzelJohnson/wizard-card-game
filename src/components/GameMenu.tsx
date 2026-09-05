@@ -49,19 +49,38 @@ export function GameMenu({
   return (
     <>
       <div className="game-menu" role="group" aria-label="Game menu">
-        <button ref={scoreSheetButtonRef} type="button" onClick={() => setOpenPanel('scores')}>
+        <button
+          className="game-menu__button"
+          ref={scoreSheetButtonRef}
+          type="button"
+          onClick={() => setOpenPanel('scores')}
+        >
           Score Sheet
         </button>
-        <button ref={rulesButtonRef} type="button" onClick={() => setOpenPanel('rules')}>
+        <button
+          className="game-menu__button"
+          ref={rulesButtonRef}
+          type="button"
+          onClick={() => setOpenPanel('rules')}
+        >
           Rules
         </button>
-        <button type="button" aria-label="Sound" aria-pressed={soundEnabled} onClick={onToggleSound}>
-          Sound <span aria-hidden="true">{soundEnabled ? 'On' : 'Off'}</span>
+        <button
+          className="game-menu__button game-menu__sound"
+          type="button"
+          aria-label="Sound"
+          aria-pressed={soundEnabled}
+          onClick={onToggleSound}
+        >
+          Sound{' '}
+          <span className="game-menu__sound-state" aria-hidden="true">
+            {soundEnabled ? 'On' : 'Off'}
+          </span>
         </button>
-        <button ref={restartButtonRef} type="button" onClick={requestRestart}>
+        <button className="game-menu__button" ref={restartButtonRef} type="button" onClick={requestRestart}>
           Restart
         </button>
-        <button ref={homeButtonRef} type="button" onClick={requestHome}>
+        <button className="game-menu__button" ref={homeButtonRef} type="button" onClick={requestHome}>
           Return Home
         </button>
       </div>
@@ -85,23 +104,35 @@ export function GameMenu({
         onClose={() => setOpenPanel(null)}
         initialFocusRef={cancelButtonRef}
         returnFocusRef={restartButtonRef}
+        className="confirm-dialog"
       >
-        <h2 id="restart-match-title">Restart match?</h2>
+        <div className="dialog-heading">
+          <span className="dialog-heading__rune" aria-hidden="true">✦</span>
+          <h2 id="restart-match-title">Restart match?</h2>
+        </div>
         <p id="restart-match-description">
           Your current unfinished match will be lost and replaced with a new match.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            setOpenPanel(null);
-            onRestart();
-          }}
-        >
-          Restart Match
-        </button>
-        <button ref={cancelButtonRef} type="button" onClick={() => setOpenPanel(null)}>
-          Cancel
-        </button>
+        <div className="dialog-actions">
+          <button
+            className="button button--danger"
+            type="button"
+            onClick={() => {
+              setOpenPanel(null);
+              onRestart();
+            }}
+          >
+            Restart Match
+          </button>
+          <button
+            className="button button--secondary"
+            ref={cancelButtonRef}
+            type="button"
+            onClick={() => setOpenPanel(null)}
+          >
+            Cancel
+          </button>
+        </div>
       </AccessibleDialog>
       <AccessibleDialog
         open={openPanel === 'home'}
@@ -110,23 +141,35 @@ export function GameMenu({
         onClose={() => setOpenPanel(null)}
         initialFocusRef={cancelButtonRef}
         returnFocusRef={homeButtonRef}
+        className="confirm-dialog"
       >
-        <h2 id="return-home-title">Return home?</h2>
+        <div className="dialog-heading">
+          <span className="dialog-heading__rune" aria-hidden="true">✦</span>
+          <h2 id="return-home-title">Return home?</h2>
+        </div>
         <p id="return-home-description">
           Your unfinished match will be abandoned and its saved progress removed.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            setOpenPanel(null);
-            onHome();
-          }}
-        >
-          Return Home and Abandon Match
-        </button>
-        <button ref={cancelButtonRef} type="button" onClick={() => setOpenPanel(null)}>
-          Cancel
-        </button>
+        <div className="dialog-actions">
+          <button
+            className="button button--danger"
+            type="button"
+            onClick={() => {
+              setOpenPanel(null);
+              onHome();
+            }}
+          >
+            Return Home and Abandon Match
+          </button>
+          <button
+            className="button button--secondary"
+            ref={cancelButtonRef}
+            type="button"
+            onClick={() => setOpenPanel(null)}
+          >
+            Cancel
+          </button>
+        </div>
       </AccessibleDialog>
     </>
   );
