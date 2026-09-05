@@ -11,8 +11,10 @@ const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 export interface MotionQueryLike {
   readonly matches: boolean;
-  addEventListener(type: 'change', listener: (event: { matches: boolean }) => void): void;
-  removeEventListener(type: 'change', listener: (event: { matches: boolean }) => void): void;
+  addEventListener?(type: 'change', listener: (event: { matches: boolean }) => void): void;
+  removeEventListener?(type: 'change', listener: (event: { matches: boolean }) => void): void;
+  addListener?(listener: (event: { matches: boolean }) => void): void;
+  removeListener?(listener: (event: { matches: boolean }) => void): void;
 }
 
 export interface WizardGameOptions {
@@ -30,7 +32,7 @@ export interface WizardGameController {
   readonly state: GameState | null;
   readonly hasSavedGame: boolean;
   readonly storageWarning: boolean;
-  readonly legalActions: GameAction[];
+  readonly legalActions: readonly GameAction[];
   startGame(seed?: number): void;
   continueGame(): void;
   dispatchHuman(action: GameAction): void;
@@ -38,6 +40,7 @@ export interface WizardGameController {
   abandonGame(): void;
 }
 
+/** Dependency-injection options are captured on initial mount; remount to replace them. */
 export function useWizardGame(options: WizardGameOptions = {}): WizardGameController {
   const [storage] = useState<StorageLike>(() => options.storage ?? browserStorage());
   const [seedFactory] = useState<() => number>(() => options.seedFactory ?? browserSeed);
@@ -231,18 +234,32 @@ export function useWizardGame(options: WizardGameOptions = {}): WizardGameContro
     [screen, state],
   );
 
-  return {
-    screen,
-    state,
-    hasSavedGame,
-    storageWarning,
-    legalActions,
-    startGame,
-    continueGame,
-    dispatchHuman,
-    acknowledgeRound,
-    abandonGame,
-  };
+  return useMemo(
+    () => ({
+      screen,
+      state,
+      hasSavedGame,
+      storageWarning,
+      legalActions,
+      startGame,
+      continueGame,
+      dispatchHuman,
+      acknowledgeRound,
+      abandonGame,
+    }),
+    [
+      abandonGame,
+      acknowledgeRound,
+      continueGame,
+      dispatchHuman,
+      hasSavedGame,
+      legalActions,
+      screen,
+      startGame,
+      state,
+      storageWarning,
+    ],
+  );
 }
 
 function useReducedMotion(
@@ -268,8 +285,19 @@ function useReducedMotion(
 
     setReducedMotion(query.matches);
     const handleChange = (event: { matches: boolean }): void => setReducedMotion(event.matches);
-    query.addEventListener('change', handleChange);
-    return () => query.removeEventListener('change', handleChange);
+
+    if (
+      typeof query.addEventListener === 'function' &&
+      typeof query.removeEventListener === 'function'
+    ) {
+      query.addEventListener('change', handleChange);
+      return () => query.removeEventListener?.('change', handleChange);
+    }
+
+    if (typeof query.addListener === 'function' && typeof query.removeListener === 'function') {
+      query.addListener(handleChange);
+      return () => query.removeListener?.(handleChange);
+    }
   }, [matchMedia]);
 
   return reducedMotion;
@@ -312,12 +340,21 @@ function actionsEqual(left: GameAction, right: GameAction): boolean {
 function browserSeed(): number {
   const values = new Uint32Array(1);
 
-  if (globalThis.crypto?.getRandomValues === undefined) {
-    throw new Error('Secure browser randomness is unavailable.');
+  if (globalThis.crypto?.getRandomValues !== undefined) {
+    try {
+      globalThis.crypto.getRandomValues(values);
+      return values[0];
+    } catch {
+      // Some privacy or embedding policies expose crypto but reject access at call time.
+    }
   }
 
-  globalThis.crypto.getRandomValues(values);
-  return values[0];
+  return fallbackBrowserSeed();
+}
+
+function fallbackBrowserSeed(): number {
+  const highResolutionTime = typeof performance === 'undefined' ? 0 : performance.now();
+  return (Date.now() ^ Math.floor(highResolutionTime * 1_000)) >>> 0;
 }
 
 function browserStorage(): StorageLike {

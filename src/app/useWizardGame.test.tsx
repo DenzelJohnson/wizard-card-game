@@ -1,10 +1,10 @@
 import { StrictMode, type ReactNode } from 'react';
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { chooseEasyAction } from '../ai/easy';
 import { createMatch, legalActions, reduceGame } from '../game/state';
-import type { GameState } from '../game/types';
+import type { GameAction, GameState } from '../game/types';
 import { SAVE_KEY, type StorageLike } from '../storage/save';
 import { useWizardGame, type MotionQueryLike } from './useWizardGame';
 
@@ -81,6 +81,30 @@ class MotionQuery implements MotionQueryLike {
   }
 }
 
+class LegacyMotionQuery {
+  matches: boolean;
+  readonly listeners = new Set<(query: LegacyMotionQuery) => void>();
+
+  constructor(matches: boolean) {
+    this.matches = matches;
+  }
+
+  addListener(listener: (query: LegacyMotionQuery) => void): void {
+    this.listeners.add(listener);
+  }
+
+  removeListener(listener: (query: LegacyMotionQuery) => void): void {
+    this.listeners.delete(listener);
+  }
+
+  change(matches: boolean): void {
+    this.matches = matches;
+    for (const listener of this.listeners) {
+      listener(this);
+    }
+  }
+}
+
 const strictWrapper = ({ children }: { children: ReactNode }) => <StrictMode>{children}</StrictMode>;
 
 function reachableState(predicate: (state: GameState) => boolean): GameState {
@@ -133,6 +157,18 @@ function computerDecisionBeforeHumanState(): GameState {
   });
 }
 
+function consecutiveComputerDecisionState(): GameState {
+  return reachableState((state) => {
+    const firstChoice = chooseEasyAction(state);
+    if (firstChoice === null) {
+      return false;
+    }
+
+    const afterFirst = reduceGame({ ...state, rng: firstChoice.rng }, firstChoice.action);
+    return chooseEasyAction(afterFirst) !== null;
+  });
+}
+
 function trickResultState(): GameState {
   return reachableState((state) => state.phase === 'trick-result');
 }
@@ -162,6 +198,8 @@ describe('useWizardGame', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it('loads one valid resume candidate but stays home until continuing the exact state', () => {
@@ -179,6 +217,22 @@ describe('useWizardGame', () => {
     expect(result.current.screen).toBe('game');
     expect(result.current.state).toEqual(saved);
     expect(storage.setAttempts).toBe(0);
+  });
+
+  it('keeps the controller object stable across parent-only rerenders', () => {
+    const storage = new MemoryStorage();
+    const { result, rerender } = renderHook(
+      ({ parentValue }: { parentValue: number }) => {
+        void parentValue;
+        return useWizardGame({ storage });
+      },
+      { initialProps: { parentValue: 1 } },
+    );
+    const controller = result.current;
+
+    rerender({ parentValue: 2 });
+
+    expect(result.current).toBe(controller);
   });
 
   it('treats missing and invalid saves as unavailable to continue without a warning', () => {
@@ -240,6 +294,60 @@ describe('useWizardGame', () => {
     expect(result.current.state).toEqual(reduceGame(createMatch(42), { type: 'DEAL_ROUND' }));
   });
 
+  it('prefers browser crypto over fallback time sources for the default seed', () => {
+    const storage = new MemoryStorage();
+    const getRandomValues = vi.fn((values: Uint32Array): Uint32Array => {
+      values[0] = 42;
+      return values;
+    });
+    vi.stubGlobal('crypto', { getRandomValues });
+    vi.spyOn(Date, 'now').mockImplementation(() => {
+      throw new Error('Fallback time must not run when crypto succeeds.');
+    });
+    const { result } = renderHook(() => useWizardGame({ storage }));
+
+    act(() => result.current.startGame());
+
+    expect(getRandomValues).toHaveBeenCalledTimes(1);
+    expect(result.current.state).toEqual(reduceGame(createMatch(42), { type: 'DEAL_ROUND' }));
+  });
+
+  it('falls back to deterministic time sources when browser crypto is missing', () => {
+    const storage = new MemoryStorage();
+    vi.stubGlobal('crypto', undefined);
+    vi.spyOn(Math, 'random').mockImplementation(() => {
+      throw new Error('Math.random must not provide game seeds.');
+    });
+    const expectedSeed = (Date.now() ^ Math.floor(performance.now() * 1_000)) >>> 0;
+    const { result } = renderHook(() => useWizardGame({ storage }));
+
+    expect(() => act(() => result.current.startGame())).not.toThrow();
+
+    expect(result.current.state).toEqual(
+      reduceGame(createMatch(expectedSeed), { type: 'DEAL_ROUND' }),
+    );
+  });
+
+  it('falls back when browser crypto rejects random-value generation', () => {
+    const storage = new MemoryStorage();
+    vi.stubGlobal('crypto', {
+      getRandomValues(): never {
+        throw new Error('secure randomness blocked');
+      },
+    });
+    vi.spyOn(Math, 'random').mockImplementation(() => {
+      throw new Error('Math.random must not provide game seeds.');
+    });
+    const expectedSeed = (Date.now() ^ Math.floor(performance.now() * 1_000)) >>> 0;
+    const { result } = renderHook(() => useWizardGame({ storage }));
+
+    expect(() => act(() => result.current.startGame())).not.toThrow();
+
+    expect(result.current.state).toEqual(
+      reduceGame(createMatch(expectedSeed), { type: 'DEAL_ROUND' }),
+    );
+  });
+
   it('accepts a current legal human action, persists it once, and rejects illegal or stale actions', () => {
     const saved = humanDecisionState();
     const storage = new MemoryStorage(saved);
@@ -297,6 +405,49 @@ describe('useWizardGame', () => {
     expect(result.current.state).toEqual(expected);
     expect(result.current.state?.rng).toEqual(choice.rng);
     expect(storage.setAttempts).toBe(1);
+  });
+
+  it('runs consecutive StrictMode computer turns at separate 450ms boundaries with each RNG persisted', () => {
+    const saved = consecutiveComputerDecisionState();
+    const storage = new MemoryStorage(saved);
+    const { result } = renderHook(() => useWizardGame({ storage }), { wrapper: strictWrapper });
+    act(() => result.current.continueGame());
+    const initial = result.current.state as GameState;
+    const firstChoice = chooseEasyAction(initial);
+    if (firstChoice === null) {
+      throw new Error('Expected a first consecutive Easy decision.');
+    }
+    const expectedAfterFirst = reduceGame(
+      { ...initial, rng: firstChoice.rng },
+      firstChoice.action,
+    );
+    const secondChoice = chooseEasyAction(expectedAfterFirst);
+    if (secondChoice === null) {
+      throw new Error('Expected a second consecutive Easy decision.');
+    }
+    const expectedAfterSecond = reduceGame(
+      { ...expectedAfterFirst, rng: secondChoice.rng },
+      secondChoice.action,
+    );
+
+    expect(vi.getTimerCount()).toBe(1);
+    act(() => vi.advanceTimersByTime(449));
+    expect(result.current.state).toBe(initial);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.state).toEqual(expectedAfterFirst);
+    expect(storage.setAttempts).toBe(1);
+    expect(JSON.parse(storage.writtenValues[0]) as GameState).toMatchObject({ rng: firstChoice.rng });
+
+    const afterFirst = result.current.state;
+    expect(vi.getTimerCount()).toBe(1);
+    act(() => vi.advanceTimersByTime(449));
+    expect(result.current.state).toBe(afterFirst);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.state).toEqual(expectedAfterSecond);
+    expect(storage.setAttempts).toBe(2);
+    expect(JSON.parse(storage.writtenValues[1]) as GameState).toMatchObject({ rng: secondChoice.rng });
   });
 
   it('keeps a trick result visible for 900ms before acknowledging and persisting it', () => {
@@ -364,6 +515,61 @@ describe('useWizardGame', () => {
 
     unmount();
     expect(motion.listeners.size).toBe(0);
+  });
+
+  it('supports legacy media-query listeners and removes them on unmount', () => {
+    const saved = trickResultState();
+    const motion = new LegacyMotionQuery(false);
+    const { result, unmount } = renderHook(() =>
+      useWizardGame({
+        storage: new MemoryStorage(saved),
+        matchMedia: () => motion as unknown as MotionQueryLike,
+      }),
+    );
+    act(() => result.current.continueGame());
+    const current = result.current.state as GameState;
+
+    expect(motion.listeners.size).toBe(1);
+    act(() => motion.change(true));
+    act(() => vi.advanceTimersByTime(0));
+    expect(result.current.state).toEqual(reduceGame(current, { type: 'ACKNOWLEDGE_TRICK' }));
+
+    unmount();
+    expect(motion.listeners.size).toBe(0);
+  });
+
+  it('treats a throwing media-query adapter as no reduced-motion preference', () => {
+    const saved = trickResultState();
+    const { result } = renderHook(() =>
+      useWizardGame({
+        storage: new MemoryStorage(saved),
+        matchMedia: () => {
+          throw new Error('matchMedia blocked');
+        },
+      }),
+    );
+    act(() => result.current.continueGame());
+    const current = result.current.state as GameState;
+
+    act(() => vi.advanceTimersByTime(899));
+    expect(result.current.state).toBe(current);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.state).toEqual(reduceGame(current, { type: 'ACKNOWLEDGE_TRICK' }));
+  });
+
+  it('treats a missing browser matchMedia API as no reduced-motion preference', () => {
+    const saved = trickResultState();
+    vi.stubGlobal('matchMedia', undefined);
+    const { result } = renderHook(() => useWizardGame({ storage: new MemoryStorage(saved) }));
+    act(() => result.current.continueGame());
+    const current = result.current.state as GameState;
+
+    act(() => vi.advanceTimersByTime(899));
+    expect(result.current.state).toBe(current);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.state).toEqual(reduceGame(current, { type: 'ACKNOWLEDGE_TRICK' }));
   });
 
   it('holds a round result until acknowledgeRound advances it through automatic setup', () => {
@@ -537,5 +743,11 @@ describe('useWizardGame', () => {
 
     act(() => result.current.abandonGame());
     expect(result.current.legalActions).toEqual([]);
+  });
+
+  it('exposes legal actions through a readonly controller contract', () => {
+    const { result } = renderHook(() => useWizardGame({ storage: new MemoryStorage() }));
+
+    expectTypeOf(result.current.legalActions).toEqualTypeOf<readonly GameAction[]>();
   });
 });
