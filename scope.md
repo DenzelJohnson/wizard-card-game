@@ -27,7 +27,7 @@ browser, and is published as a static site from a public GitHub repository using
 
 | Module / path | Responsibility | Reads | Writes |
 |---------------|----------------|-------|--------|
-| `src/game/` | Pure rules engine, game transitions, legal actions, trick resolution, scoring | Game actions and deterministic RNG interface | Versioned `GameState` values |
+| `src/game/` | Pure rules engine, stable card domain types, deck generation, deterministic RNG, game transitions, legal actions, trick resolution, and scoring | Game actions and deterministic RNG interface | `Card`/`RngState` values and versioned `GameState` values |
 | `src/ai/` | Easy-mode computer decisions | Legal actions from `src/game/` | Selected legal action |
 | `src/storage/` | Validate, load, migrate, save, and clear resumable matches | Versioned `GameState`; browser storage | Browser storage record |
 | `src/components/` | Accessible home, table, bidding, score, help, and result interfaces | View model and legal actions | User intents/actions |
@@ -65,6 +65,7 @@ No scheduled, local, or external automation exists in the empty starting reposit
 ## 8. Dependency Map
 
 - `GameState` and action contracts -> produced by `src/game/`; consumed by `src/app/`, `src/ai/`, `src/storage/`, `src/components/`, and tests
+- `Card`, `RngState`, deck creation, and seeded shuffle contracts -> produced by `src/game/types.ts` and `src/game/deck.ts`; consumed by game-state logic, AI, storage validation, and unit tests
 - Legal-action contract -> produced by `src/game/`; consumed by human UI controls, Easy AI, and tests
 - Persisted-save schema/version -> produced by `src/storage/`; consumed by load/resume/migration logic and integration tests
 - UI intent contract -> produced by `src/components/`; consumed by `src/app/`
