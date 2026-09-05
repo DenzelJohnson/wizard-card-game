@@ -54,7 +54,7 @@ None.
 | Service | Purpose | Auth / account | Used by |
 |---------|---------|----------------|---------|
 | GitHub | Public source repository `DenzelJohnson/wizard-card-game` | User's authenticated GitHub account | Git and repository administration |
-| GitHub Pages | Static hosting for the playable game | Repository Pages configuration | Deployment workflow |
+| GitHub Pages | Verified static hosting at `https://denzeljohnson.github.io/wizard-card-game/` | Repository Pages configuration | Deployment workflow |
 | GitHub Actions | Build, test, and deploy the static site | Repository-scoped workflow token | `.github/workflows/deploy.yml` |
 
 No third-party runtime API, analytics, database, or paid service is in scope.
@@ -93,8 +93,5 @@ No other scheduled, local, or external automation is part of this project.
 
 ## 9. Known Fragilities / UNVERIFIED
 
-- GitHub Pages must be enabled for workflow-based deployment after repository creation; this will
-  be verified during publishing.
 - Browser storage can be unavailable or contain corrupt/old data; the application must recover by
   discarding only the invalid save and starting safely.
-- Direct navigation and asset URLs must work beneath `/wizard-card-game/`, not only at `/`.
