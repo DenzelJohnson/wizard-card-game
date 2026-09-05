@@ -1,4 +1,5 @@
 import { createDeck, createRng, nextRandom, shuffle } from './deck';
+import { assertEssentialGameState } from './invariants';
 import { legalCards, winningPlay } from './rules';
 import { scoreRound } from './scoring';
 import {
@@ -88,6 +89,19 @@ export function legalActions(state: GameState): GameAction[] {
 }
 
 export function reduceGame(state: GameState, action: GameAction): GameState {
+  const nextState = transitionGame(state, action);
+
+  if (nextState !== state) {
+    assertEssentialGameState(
+      nextState,
+      import.meta.env.DEV && import.meta.env.MODE !== 'test',
+    );
+  }
+
+  return nextState;
+}
+
+function transitionGame(state: GameState, action: GameAction): GameState {
   if (state.phase === 'round-setup' && action.type === 'DEAL_ROUND') {
     return dealRound(state);
   }

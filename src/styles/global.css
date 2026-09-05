@@ -205,6 +205,12 @@ legend {
   background: linear-gradient(180deg, var(--color-danger), var(--color-burgundy-dark));
 }
 
+.recovery-screen__action {
+  border: 1px solid var(--color-gold-bright);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+}
+
 .storage-notice {
   display: flex;
   max-inline-size: 42rem;
