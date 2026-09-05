@@ -1,5 +1,5 @@
 import { createDeck } from '../game/deck';
-import { MAX_ROUNDS } from '../game/state';
+import { EVENT_LIMIT, MAX_ROUNDS } from '../game/state';
 import {
   PLAYERS,
   PLAYER_IDS,
@@ -271,7 +271,11 @@ function isRoundScores(value: unknown, currentRound: number): boolean {
 }
 
 function isEvents(value: unknown): boolean {
-  return Array.isArray(value) && value.length <= 24 && value.every((event) => typeof event === 'string');
+  return (
+    Array.isArray(value) &&
+    value.length <= EVENT_LIMIT &&
+    value.every((event) => typeof event === 'string')
+  );
 }
 
 function isCardArray(value: unknown): value is Card[] {
