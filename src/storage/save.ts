@@ -1,6 +1,5 @@
 import { createDeck } from '../game/deck';
-import { winningPlay } from '../game/rules';
-import { scoreRound } from '../game/scoring';
+import { MAX_ROUNDS } from '../game/state';
 import {
   PLAYERS,
   PLAYER_IDS,
@@ -11,6 +10,7 @@ import {
   type PlayedCard,
   type PlayerId,
 } from '../game/types';
+import { isSemanticallyValidGameState } from '../game/validation';
 
 export const SAVE_KEY = 'wizard-card-game/save-v1';
 
@@ -36,10 +36,6 @@ const PHASES: readonly GamePhase[] = [
   'match-result',
 ];
 const CANONICAL_CARDS = new Map(createDeck().map((card) => [card.id, card]));
-const MIN_MATCH_SCORE = -1_200;
-const MAX_MATCH_SCORE = 1_500;
-const MIN_ROUND_DELTA = -150;
-const MAX_ROUND_DELTA = 170;
 const ROOT_KEYS = [
   'schemaVersion',
   'matchId',
@@ -96,11 +92,11 @@ export function loadGame(storage: StorageLike): LoadResult {
 }
 
 export function saveGame(storage: StorageLike, state: GameState): WriteResult {
-  if (state.phase === 'match-result') {
-    return clearGame(storage);
-  }
-
   try {
+    if (state.phase === 'match-result') {
+      return clearGame(storage);
+    }
+
     storage.setItem(SAVE_KEY, JSON.stringify(state));
     return { ok: true };
   } catch {
@@ -130,10 +126,16 @@ function readVersionedState(value: unknown): GameState | null {
     return null;
   }
 
-  return isGameStateV1(value) ? value : null;
+  if (!isStructurallyValidGameStateV1(value)) {
+    return null;
+  }
+
+  return isSemanticallyValidGameState(value) ? value : null;
 }
 
-function isGameStateV1(value: Record<string, unknown>): value is Record<string, unknown> & GameState {
+function isStructurallyValidGameStateV1(
+  value: Record<string, unknown>,
+): value is Record<string, unknown> & GameState {
   if (
     !hasExactKeys(value, ROOT_KEYS) ||
     value.schemaVersion !== 1 ||
@@ -141,7 +143,7 @@ function isGameStateV1(value: Record<string, unknown>): value is Record<string, 
     value.difficulty !== 'easy' ||
     !isPlayers(value.players) ||
     !isPhase(value.phase) ||
-    !isIntegerInRange(value.round, 1, 15) ||
+    !isIntegerInRange(value.round, 1, MAX_ROUNDS) ||
     !isPlayerId(value.dealerId) ||
     !(value.activePlayerId === null || isPlayerId(value.activePlayerId)) ||
     !isRng(value.rng) ||
@@ -153,15 +155,14 @@ function isGameStateV1(value: Record<string, unknown>): value is Record<string, 
     !isPlayedCards(value.currentTrick, 0, PLAYER_IDS.length) ||
     !isCompletedTricks(value.completedTricks, value.round) ||
     !isPlayerIntegers(value.tricksWon, 0, value.round) ||
-    !isPlayerIntegers(value.scores, MIN_MATCH_SCORE, MAX_MATCH_SCORE) ||
+    !isPlayerIntegers(value.scores) ||
     !isRoundScores(value.roundScores, value.round) ||
     !isEvents(value.events)
   ) {
     return false;
   }
 
-  const state = value as unknown as GameState;
-  return hasValidCardPartition(state) && hasValidPhaseState(state);
+  return true;
 }
 
 function isPlayers(value: unknown): boolean {
@@ -190,49 +191,32 @@ function isHands(value: unknown): boolean {
 }
 
 function isBids(value: unknown, round: number): boolean {
-  if (!Array.isArray(value) || value.length > PLAYER_IDS.length) {
-    return false;
-  }
-
-  const bidders = new Set<PlayerId>();
-
-  return value.every((bid) => {
-    if (
-      !isRecord(bid) ||
-      !hasExactKeys(bid, ['playerId', 'bid']) ||
-      !isPlayerId(bid.playerId) ||
-      !isIntegerInRange(bid.bid, 0, round) ||
-      bidders.has(bid.playerId)
-    ) {
-      return false;
-    }
-
-    bidders.add(bid.playerId);
-    return true;
-  });
+  return (
+    Array.isArray(value) &&
+    value.length <= PLAYER_IDS.length &&
+    value.every(
+      (bid) =>
+        isRecord(bid) &&
+        hasExactKeys(bid, ['playerId', 'bid']) &&
+        isPlayerId(bid.playerId) &&
+        isIntegerInRange(bid.bid, 0, round),
+    )
+  );
 }
 
 function isPlayedCards(value: unknown, minimum: number, maximum: number): value is PlayedCard[] {
-  if (!Array.isArray(value) || value.length < minimum || value.length > maximum) {
-    return false;
-  }
-
-  const players = new Set<PlayerId>();
-
-  return value.every((play) => {
-    if (
-      !isRecord(play) ||
-      !hasExactKeys(play, ['playerId', 'card']) ||
-      !isPlayerId(play.playerId) ||
-      !isCanonicalCard(play.card) ||
-      players.has(play.playerId)
-    ) {
-      return false;
-    }
-
-    players.add(play.playerId);
-    return true;
-  });
+  return (
+    Array.isArray(value) &&
+    value.length >= minimum &&
+    value.length <= maximum &&
+    value.every(
+      (play) =>
+        isRecord(play) &&
+        hasExactKeys(play, ['playerId', 'card']) &&
+        isPlayerId(play.playerId) &&
+        isCanonicalCard(play.card),
+    )
+  );
 }
 
 function isCompletedTricks(value: unknown, round: number): boolean {
@@ -244,10 +228,7 @@ function isCompletedTricks(value: unknown, round: number): boolean {
         isRecord(trick) &&
         hasExactKeys(trick, ['plays', 'winnerId']) &&
         isPlayedCards(trick.plays, PLAYER_IDS.length, PLAYER_IDS.length) &&
-        isPlayerId(trick.winnerId) &&
-        trick.plays.some(
-          (play) => isRecord(play) && isPlayerId(play.playerId) && play.playerId === trick.winnerId,
-        ),
+        isPlayerId(trick.winnerId),
     )
   );
 }
@@ -257,11 +238,9 @@ function isPlayerIntegers(value: unknown, minimum = Number.MIN_SAFE_INTEGER, max
 }
 
 function isRoundScores(value: unknown, currentRound: number): boolean {
-  if (!Array.isArray(value) || value.length > 15) {
+  if (!Array.isArray(value) || value.length > MAX_ROUNDS) {
     return false;
   }
-
-  const rounds = new Set<number>();
 
   return value.every((record) => {
     if (
@@ -270,13 +249,10 @@ function isRoundScores(value: unknown, currentRound: number): boolean {
       !isIntegerInRange(record.round, 1, currentRound) ||
       !(record.trump === null || isSuit(record.trump)) ||
       !Array.isArray(record.players) ||
-      record.players.length !== PLAYER_IDS.length ||
-      rounds.has(record.round)
+      record.players.length !== PLAYER_IDS.length
     ) {
       return false;
     }
-
-    rounds.add(record.round);
 
     return record.players.every((score, index) => {
       if (!isRecord(score) || !hasExactKeys(score, ['playerId', 'bid', 'tricks', 'delta', 'cumulative'])) {
@@ -287,8 +263,8 @@ function isRoundScores(value: unknown, currentRound: number): boolean {
         score.playerId === PLAYER_IDS[index] &&
         isIntegerInRange(score.bid, 0, record.round as number) &&
         isIntegerInRange(score.tricks, 0, record.round as number) &&
-        isIntegerInRange(score.delta, MIN_ROUND_DELTA, MAX_ROUND_DELTA) &&
-        isIntegerInRange(score.cumulative, MIN_MATCH_SCORE, MAX_MATCH_SCORE)
+        Number.isSafeInteger(score.delta) &&
+        Number.isSafeInteger(score.cumulative)
       );
     });
   });
@@ -296,251 +272,6 @@ function isRoundScores(value: unknown, currentRound: number): boolean {
 
 function isEvents(value: unknown): boolean {
   return Array.isArray(value) && value.length <= 24 && value.every((event) => typeof event === 'string');
-}
-
-function hasValidCardPartition(state: GameState): boolean {
-  const playedCards = [
-    ...state.currentTrick,
-    ...state.completedTricks.flatMap((trick) => trick.plays),
-  ];
-  const locatedCards = [
-    ...state.drawPile,
-    ...(state.revealedUpCard === null ? [] : [state.revealedUpCard]),
-    ...PLAYER_IDS.flatMap((playerId) => state.hands[playerId]),
-    ...playedCards.map((play) => play.card),
-  ];
-
-  if (state.phase === 'round-setup') {
-    return locatedCards.length === 0;
-  }
-
-  if (locatedCards.length !== CANONICAL_CARDS.size || new Set(locatedCards.map((card) => card.id)).size !== CANONICAL_CARDS.size) {
-    return false;
-  }
-
-  if (!locatedCards.every((card) => CANONICAL_CARDS.has(card.id))) {
-    return false;
-  }
-
-  const expectedUpCards = state.round < 15 ? 1 : 0;
-  const expectedDrawCards = CANONICAL_CARDS.size - state.round * PLAYER_IDS.length - expectedUpCards;
-
-  if ((state.revealedUpCard === null ? 0 : 1) !== expectedUpCards || state.drawPile.length !== expectedDrawCards) {
-    return false;
-  }
-
-  return PLAYER_IDS.every((playerId) => {
-    const playedByPlayer = playedCards.filter((play) => play.playerId === playerId).length;
-    return state.hands[playerId].length + playedByPlayer === state.round;
-  });
-}
-
-function hasValidPhaseState(state: GameState): boolean {
-  switch (state.phase) {
-    case 'round-setup':
-      return (
-        state.activePlayerId === null &&
-        state.trump === null &&
-        state.revealedUpCard === null &&
-        state.drawPile.length === 0 &&
-        state.bids.length === 0 &&
-        state.currentTrick.length === 0 &&
-        state.completedTricks.length === 0 &&
-        hasEmptyHands(state) &&
-        hasZeroTricksWon(state)
-      );
-
-    case 'choose-trump':
-      return (
-        state.activePlayerId === state.dealerId &&
-        state.revealedUpCard?.kind === 'wizard' &&
-        state.trump === null &&
-        state.bids.length === 0 &&
-        state.currentTrick.length === 0 &&
-        state.completedTricks.length === 0 &&
-        hasFullHands(state) &&
-        hasZeroTricksWon(state)
-      );
-
-    case 'bidding':
-      return (
-        state.bids.length < PLAYER_IDS.length &&
-        hasBidsInOrder(state) &&
-        state.activePlayerId === playerAfter(state.dealerId, state.bids.length + 1) &&
-        state.currentTrick.length === 0 &&
-        state.completedTricks.length === 0 &&
-        hasFullHands(state) &&
-        hasZeroTricksWon(state) &&
-        hasResolvedTrump(state)
-      );
-
-    case 'playing':
-      return (
-        state.bids.length === PLAYER_IDS.length &&
-        hasBidsInOrder(state) &&
-        state.currentTrick.length < PLAYER_IDS.length &&
-        state.completedTricks.length < state.round &&
-        hasValidTrickOrderAndWinners(state) &&
-        state.activePlayerId === expectedCurrentPlayer(state) &&
-        hasMatchingTricksWon(state, false) &&
-        hasResolvedTrump(state)
-      );
-
-    case 'trick-result': {
-      const currentWinner = winnerId(state.currentTrick, state.trump);
-
-      return (
-        state.bids.length === PLAYER_IDS.length &&
-        hasBidsInOrder(state) &&
-        state.currentTrick.length === PLAYER_IDS.length &&
-        state.completedTricks.length < state.round &&
-        hasValidTrickOrderAndWinners(state) &&
-        currentWinner !== null &&
-        state.activePlayerId === currentWinner &&
-        hasMatchingTricksWon(state, true) &&
-        hasResolvedTrump(state)
-      );
-    }
-
-    case 'round-result':
-      return (
-        state.bids.length === PLAYER_IDS.length &&
-        hasBidsInOrder(state) &&
-        state.activePlayerId === null &&
-        state.currentTrick.length === 0 &&
-        state.completedTricks.length === state.round &&
-        hasEmptyHands(state) &&
-        hasValidTrickOrderAndWinners(state) &&
-        hasMatchingTricksWon(state, false) &&
-        hasCurrentRoundScore(state) &&
-        hasResolvedTrump(state)
-      );
-
-    case 'match-result':
-      return false;
-  }
-}
-
-function hasBidsInOrder(state: GameState): boolean {
-  return state.bids.every(
-    (bid, index) => bid.playerId === playerAfter(state.dealerId, index + 1),
-  );
-}
-
-function hasValidTrickOrderAndWinners(state: GameState): boolean {
-  let leaderId = playerAfter(state.dealerId, 1);
-
-  for (const trick of state.completedTricks) {
-    if (
-      !hasPlayersInOrder(trick.plays, leaderId) ||
-      winnerId(trick.plays, state.trump) !== trick.winnerId
-    ) {
-      return false;
-    }
-
-    leaderId = trick.winnerId;
-  }
-
-  return hasPlayersInOrder(state.currentTrick, leaderId);
-}
-
-function hasPlayersInOrder(plays: readonly PlayedCard[], leaderId: PlayerId): boolean {
-  return plays.every((play, index) => play.playerId === playerAfter(leaderId, index));
-}
-
-function expectedCurrentPlayer(state: GameState): PlayerId {
-  const leaderId = state.completedTricks.at(-1)?.winnerId ?? playerAfter(state.dealerId, 1);
-  const lastPlayerId = state.currentTrick.at(-1)?.playerId;
-  return lastPlayerId === undefined ? leaderId : playerAfter(lastPlayerId, 1);
-}
-
-function hasMatchingTricksWon(state: GameState, includeCurrentTrick: boolean): boolean {
-  const expected: Record<PlayerId, number> = { human: 0, ember: 0, rowan: 0, mira: 0 };
-
-  for (const trick of state.completedTricks) {
-    expected[trick.winnerId] += 1;
-  }
-
-  if (includeCurrentTrick) {
-    const currentWinner = winnerId(state.currentTrick, state.trump);
-    if (currentWinner === null) {
-      return false;
-    }
-    expected[currentWinner] += 1;
-  }
-
-  return PLAYER_IDS.every((playerId) => state.tricksWon[playerId] === expected[playerId]);
-}
-
-function winnerId(plays: readonly PlayedCard[], trump: GameState['trump']): PlayerId | null {
-  if (plays.length === 0) {
-    return null;
-  }
-
-  const playerId = winningPlay(plays, trump).playerId;
-  return isPlayerId(playerId) ? playerId : null;
-}
-
-function hasResolvedTrump(state: GameState): boolean {
-  if (state.round === 15) {
-    return state.revealedUpCard === null && state.trump === null;
-  }
-
-  if (state.revealedUpCard === null) {
-    return false;
-  }
-
-  if (state.revealedUpCard.kind === 'suited') {
-    return state.trump === state.revealedUpCard.suit;
-  }
-
-  if (state.revealedUpCard.kind === 'jester') {
-    return state.trump === null;
-  }
-
-  return state.trump !== null;
-}
-
-function hasCurrentRoundScore(state: GameState): boolean {
-  const roundScore = state.roundScores.at(-1);
-
-  if (
-    roundScore === undefined ||
-    roundScore.round !== state.round ||
-    roundScore.trump !== state.trump
-  ) {
-    return false;
-  }
-
-  return PLAYER_IDS.every((playerId, index) => {
-    const playerScore = roundScore.players[index];
-    const bid = state.bids.find((record) => record.playerId === playerId)?.bid;
-
-    return (
-      playerScore?.playerId === playerId &&
-      bid !== undefined &&
-      playerScore.bid === bid &&
-      playerScore.tricks === state.tricksWon[playerId] &&
-      playerScore.delta === scoreRound(bid, state.tricksWon[playerId]) &&
-      playerScore.cumulative === state.scores[playerId]
-    );
-  });
-}
-
-function hasFullHands(state: GameState): boolean {
-  return PLAYER_IDS.every((playerId) => state.hands[playerId].length === state.round);
-}
-
-function hasEmptyHands(state: GameState): boolean {
-  return PLAYER_IDS.every((playerId) => state.hands[playerId].length === 0);
-}
-
-function hasZeroTricksWon(state: GameState): boolean {
-  return PLAYER_IDS.every((playerId) => state.tricksWon[playerId] === 0);
-}
-
-function playerAfter(playerId: PlayerId, offset: number): PlayerId {
-  return PLAYER_IDS[(PLAYER_IDS.indexOf(playerId) + offset) % PLAYER_IDS.length];
 }
 
 function isCardArray(value: unknown): value is Card[] {

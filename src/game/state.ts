@@ -14,6 +14,7 @@ import {
 } from './types';
 
 export const EVENT_LIMIT = 24;
+export const MAX_ROUNDS = 15;
 
 export function createMatch(seed: number): GameState {
   const initialRng = createRng(seed);
@@ -102,7 +103,7 @@ export function reduceGame(state: GameState, action: GameAction): GameState {
       {
         ...state,
         phase: 'bidding',
-        activePlayerId: nextPlayer(state.dealerId),
+        activePlayerId: nextPlayerId(state.dealerId),
         trump: action.suit,
       },
       `${playerName(action.playerId)} chose ${action.suit}.`,
@@ -152,7 +153,7 @@ function placeBid(state: GameState, playerId: PlayerId, bid: number): GameState 
     {
       ...state,
       phase: biddingComplete ? 'playing' : 'bidding',
-      activePlayerId: biddingComplete ? nextPlayer(state.dealerId) : nextPlayer(playerId),
+      activePlayerId: biddingComplete ? nextPlayerId(state.dealerId) : nextPlayerId(playerId),
       bids,
     },
     `${playerName(playerId)} bid ${bid}.`,
@@ -180,7 +181,7 @@ function playCard(state: GameState, playerId: PlayerId, cardId: string): GameSta
     return appendEvent(
       {
         ...state,
-        activePlayerId: nextPlayer(playerId),
+        activePlayerId: nextPlayerId(playerId),
         hands,
         currentTrick,
       },
@@ -261,11 +262,11 @@ function acknowledgeTrick(state: GameState): GameState {
 }
 
 function acknowledgeRound(state: GameState): GameState {
-  if (!Number.isInteger(state.round) || state.round < 1 || state.round > 15) {
+  if (!Number.isInteger(state.round) || state.round < 1 || state.round > MAX_ROUNDS) {
     return state;
   }
 
-  if (state.round === 15) {
+  if (state.round === MAX_ROUNDS) {
     return appendEvent({ ...state, phase: 'match-result', activePlayerId: null }, 'Match complete.');
   }
 
@@ -276,7 +277,7 @@ function acknowledgeRound(state: GameState): GameState {
       ...state,
       phase: 'round-setup',
       round,
-      dealerId: nextPlayer(state.dealerId),
+      dealerId: nextPlayerId(state.dealerId),
       activePlayerId: null,
       drawPile: [],
       hands: emptyPlayerArrays(),
@@ -292,7 +293,7 @@ function acknowledgeRound(state: GameState): GameState {
 }
 
 function dealRound(state: GameState): GameState {
-  if (!Number.isInteger(state.round) || state.round < 1 || state.round > 15) {
+  if (!Number.isInteger(state.round) || state.round < 1 || state.round > MAX_ROUNDS) {
     return state;
   }
 
@@ -311,7 +312,7 @@ function dealRound(state: GameState): GameState {
   const revealedUpCard = shuffled.cards[cardIndex] ?? null;
   const drawPile = shuffled.cards.slice(cardIndex + (revealedUpCard === null ? 0 : 1));
   const phase = revealedUpCard?.kind === 'wizard' ? 'choose-trump' : 'bidding';
-  const activePlayerId = phase === 'choose-trump' ? state.dealerId : nextPlayer(state.dealerId);
+  const activePlayerId = phase === 'choose-trump' ? state.dealerId : nextPlayerId(state.dealerId);
   const trump = revealedUpCard?.kind === 'suited' ? revealedUpCard.suit : null;
   const message =
     phase === 'choose-trump'
@@ -337,7 +338,7 @@ function dealRound(state: GameState): GameState {
   );
 }
 
-function nextPlayer(playerId: PlayerId): PlayerId {
+export function nextPlayerId(playerId: PlayerId): PlayerId {
   return PLAYER_IDS[(PLAYER_IDS.indexOf(playerId) + 1) % PLAYER_IDS.length];
 }
 

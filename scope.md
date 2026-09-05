@@ -27,9 +27,9 @@ browser, and is published as a static site from a public GitHub repository using
 
 | Module / path | Responsibility | Reads | Writes |
 |---------------|----------------|-------|--------|
-| `src/game/` | Pure rules engine, stable card domain types, deck generation, deterministic RNG, game transitions, legal actions, trick resolution, and scoring | Game actions and deterministic RNG interface | `Card`/`RngState` values and versioned `GameState` values |
+| `src/game/` | Pure rules engine, stable card domain types, deck generation, deterministic RNG, game transitions, legal actions, trick resolution, scoring, and semantic `GameState` validation | Game actions and deterministic RNG interface | `Card`/`RngState` values, versioned `GameState` values, and game-validity results |
 | `src/ai/` | Easy-mode computer decisions | Legal actions from `src/game/` | Selected legal action |
-| `src/storage/` | Validate, load, save, and clear resumable matches through tagged, non-throwing results | Versioned `GameState`; injected `StorageLike` browser storage | `wizard-card-game/save-v1` JSON record |
+| `src/storage/` | Structurally parse, load, save, and clear resumable matches through tagged, non-throwing results | Versioned `GameState`, game-owned semantic validation, and injected `StorageLike` browser storage | `wizard-card-game/save-v1` JSON record |
 | `src/components/` | Accessible home, table, bidding, score, help, and result interfaces | View model and legal actions | User intents/actions |
 | `src/app/` | Application orchestration and phase progression | Engine, AI, storage, UI intents | State updates and persistence requests |
 | `src/styles/` | Fantasy-tavern visual system, responsive layout, motion preferences | Component class names and tokens | Rendered presentation |
@@ -67,7 +67,9 @@ No scheduled, local, or external automation exists in the empty starting reposit
 - `GameState` and action contracts -> produced by `src/game/`; consumed by `src/app/`, `src/ai/`, `src/storage/`, `src/components/`, and tests
 - `Card`, `RngState`, deck creation, and seeded shuffle contracts -> produced by `src/game/types.ts` and `src/game/deck.ts`; consumed by game-state logic, AI, storage validation, and unit tests
 - Legal-action contract -> produced by `src/game/`; consumed by human UI controls, Easy AI, and tests
-- Persisted-save schema/version -> `src/storage/save.ts` writes complete schema-v1 `GameState` JSON to `wizard-card-game/save-v1`; the same module validates structural fields, canonical card partitions, and phase-dependent action-order/readiness invariants before loading it, and planned `src/app/useWizardGame.ts` consumes `LoadResult` / `WriteResult` to resume or surface unavailable storage without exceptions
+- Persisted-save schema/version -> `src/storage/save.ts` writes complete schema-v1 `GameState` JSON to `wizard-card-game/save-v1`, validates its JSON/key/type/card structure, and delegates phase/trick/score invariants to `src/game/validation.ts`; planned `src/app/useWizardGame.ts` consumes `LoadResult` / `WriteResult` to resume or surface unavailable storage without exceptions
+- Semantic `GameState` validity -> produced by `src/game/validation.ts` using canonical card ownership, existing legal-card/winner/scoring rules, phase readiness, turn order, and cumulative score history; consumed by `src/storage/save.ts` before returning a resumable state
+- Round/seat progression helpers -> `MAX_ROUNDS` and `nextPlayerId` are produced by `src/game/state.ts`; consumed by engine transitions, semantic validation, and structural round bounds
 - `StorageLike` boundary -> implemented by injected browser `localStorage` in planned app orchestration and in-memory test fakes; only `getItem`, `setItem`, and `removeItem` are required
 - Save lifecycle -> resumable phases are persisted; `match-result` clears the resumable record; invalid/nonresumable loads attempt cleanup; explicit clear reports storage removal failures
 - UI intent contract -> produced by `src/components/`; consumed by `src/app/`
