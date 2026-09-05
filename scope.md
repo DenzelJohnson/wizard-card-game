@@ -67,7 +67,7 @@ No scheduled, local, or external automation exists in the empty starting reposit
 - `GameState` and action contracts -> produced by `src/game/`; consumed by `src/app/`, `src/ai/`, `src/storage/`, `src/components/`, and tests
 - `Card`, `RngState`, deck creation, and seeded shuffle contracts -> produced by `src/game/types.ts` and `src/game/deck.ts`; consumed by game-state logic, AI, storage validation, and unit tests
 - Legal-action contract -> produced by `src/game/`; consumed by human UI controls, Easy AI, and tests
-- Persisted-save schema/version -> `src/storage/save.ts` writes complete schema-v1 `GameState` JSON to `wizard-card-game/save-v1`; the same module validates and loads it, and planned `src/app/useWizardGame.ts` consumes `LoadResult` / `WriteResult` to resume or surface unavailable storage without exceptions
+- Persisted-save schema/version -> `src/storage/save.ts` writes complete schema-v1 `GameState` JSON to `wizard-card-game/save-v1`; the same module validates structural fields, canonical card partitions, and phase-dependent action-order/readiness invariants before loading it, and planned `src/app/useWizardGame.ts` consumes `LoadResult` / `WriteResult` to resume or surface unavailable storage without exceptions
 - `StorageLike` boundary -> implemented by injected browser `localStorage` in planned app orchestration and in-memory test fakes; only `getItem`, `setItem`, and `removeItem` are required
 - Save lifecycle -> resumable phases are persisted; `match-result` clears the resumable record; invalid/nonresumable loads attempt cleanup; explicit clear reports storage removal failures
 - UI intent contract -> produced by `src/components/`; consumed by `src/app/`

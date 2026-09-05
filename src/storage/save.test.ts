@@ -90,6 +90,57 @@ function serialized(state: GameState = dealtState()): Record<string, unknown> {
   return JSON.parse(JSON.stringify(state)) as Record<string, unknown>;
 }
 
+function stateWithBidCount(count: number): GameState {
+  let state = dealtInPhase('bidding');
+
+  while (state.phase === 'bidding' && state.bids.length < count) {
+    state = reduceGame(state, legalActions(state)[0]);
+  }
+
+  return state;
+}
+
+function stateWithCurrentTrickLength(length: number): GameState {
+  let state = phaseFixtures().find(({ phase }) => phase === 'playing');
+
+  if (state === undefined) {
+    throw new Error('No playing fixture found.');
+  }
+
+  while (state.phase === 'playing' && state.currentTrick.length < length) {
+    state = reduceGame(state, legalActions(state)[0]);
+  }
+
+  return state;
+}
+
+function reachableState(predicate: (state: GameState) => boolean): GameState {
+  let state = createMatch(20_260_905);
+
+  for (let transition = 0; transition <= 800; transition += 1) {
+    if (predicate(state)) {
+      return state;
+    }
+
+    const action = legalActions(state)[0];
+    if (action === undefined) {
+      break;
+    }
+    state = reduceGame(state, action);
+  }
+
+  throw new Error('No matching reachable state found.');
+}
+
+function expectInvalidMutation(state: GameState, mutate: (value: Record<string, unknown>) => void): void {
+  const value = serialized(state);
+  mutate(value);
+  const storage = new MemoryStorage(JSON.stringify(value));
+
+  expect(loadGame(storage)).toEqual({ ok: false, reason: 'invalid' });
+  expect(storage.removedKeys).toEqual([SAVE_KEY]);
+}
+
 describe('browser save boundary', () => {
   it.each([
     ['a fresh round-setup state', createMatch(42)],
@@ -118,6 +169,136 @@ describe('browser save boundary', () => {
       expect(saveGame(storage, state)).toEqual({ ok: true });
       expect(loadGame(storage)).toEqual({ ok: true, state });
     }
+  });
+
+  it('round-trips every reachable resumable state in a complete match', () => {
+    let state = createMatch(20_260_905);
+    let transitions = 0;
+
+    while (state.phase !== 'match-result') {
+      const storage = new MemoryStorage();
+      expect(saveGame(storage, state)).toEqual({ ok: true });
+      expect(loadGame(storage)).toEqual({ ok: true, state });
+
+      const action = legalActions(state)[0];
+      if (action === undefined) {
+        throw new Error(`No legal action at round ${state.round} in ${state.phase}.`);
+      }
+
+      state = reduceGame(state, action);
+      transitions += 1;
+      expect(transitions).toBeLessThanOrEqual(800);
+    }
+
+    expect(state.roundScores).toHaveLength(15);
+  });
+
+  it('rejects round setup with action state left populated', () => {
+    expectInvalidMutation(createMatch(42), (value) => {
+      value.bids = [{ playerId: 'human', bid: 0 }];
+    });
+  });
+
+  it('rejects choose-trump when the dealer is not active', () => {
+    expectInvalidMutation(dealtInPhase('choose-trump'), (value) => {
+      value.activePlayerId = null;
+    });
+  });
+
+  it('rejects bidding with no active player', () => {
+    expectInvalidMutation(dealtInPhase('bidding'), (value) => {
+      value.activePlayerId = null;
+    });
+  });
+
+  it('rejects bids outside clockwise order from the dealer', () => {
+    expectInvalidMutation(stateWithBidCount(2), (value) => {
+      (value.bids as unknown[]).reverse();
+    });
+  });
+
+  it('rejects playing before all four players have bid', () => {
+    const playing = phaseFixtures().find(({ phase }) => phase === 'playing');
+    if (playing === undefined) {
+      throw new Error('No playing fixture found.');
+    }
+
+    expectInvalidMutation(playing, (value) => {
+      value.bids = [];
+    });
+  });
+
+  it('rejects a current trick whose players are out of turn order', () => {
+    expectInvalidMutation(stateWithCurrentTrickLength(2), (value) => {
+      (value.currentTrick as unknown[]).reverse();
+    });
+  });
+
+  it('rejects trick-result with an empty visible trick even when all cards remain located', () => {
+    const trickResult = phaseFixtures().find(({ phase }) => phase === 'trick-result');
+    if (trickResult === undefined) {
+      throw new Error('No trick-result fixture found.');
+    }
+
+    expectInvalidMutation(trickResult, (value) => {
+      const hands = value.hands as Record<string, unknown[]>;
+      const currentTrick = value.currentTrick as Array<Record<string, unknown>>;
+
+      for (const play of currentTrick) {
+        hands[play.playerId as string].push(play.card);
+      }
+      value.currentTrick = [];
+    });
+  });
+
+  it('rejects trick-result when tricks won omits the visible current winner', () => {
+    const trickResult = phaseFixtures().find(({ phase }) => phase === 'trick-result');
+    if (trickResult === undefined) {
+      throw new Error('No trick-result fixture found.');
+    }
+
+    expectInvalidMutation(trickResult, (value) => {
+      value.tricksWon = { human: 0, ember: 0, rowan: 0, mira: 0 };
+    });
+  });
+
+  it('rejects playing when tricks won disagrees with completed-trick winners', () => {
+    const playing = reachableState(
+      (state) => state.phase === 'playing' && state.completedTricks.length === 1,
+    );
+
+    expectInvalidMutation(playing, (value) => {
+      value.tricksWon = { human: 0, ember: 0, rowan: 0, mira: 0 };
+    });
+  });
+
+  it('rejects round-result without a score row for the current round', () => {
+    const roundResult = phaseFixtures().find(({ phase }) => phase === 'round-result');
+    if (roundResult === undefined) {
+      throw new Error('No round-result fixture found.');
+    }
+
+    expectInvalidMutation(roundResult, (value) => {
+      value.roundScores = [];
+    });
+  });
+
+  it('rejects a current round score with mismatched trump or scoring delta', () => {
+    const roundResult = phaseFixtures().find(({ phase }) => phase === 'round-result');
+    if (roundResult === undefined) {
+      throw new Error('No round-result fixture found.');
+    }
+
+    expectInvalidMutation(roundResult, (value) => {
+      const rows = value.roundScores as Array<Record<string, unknown>>;
+      rows.at(-1)!.trump = null;
+    });
+
+    expectInvalidMutation(roundResult, (value) => {
+      const rows = value.roundScores as Array<Record<string, unknown>>;
+      const players = rows.at(-1)!.players as Array<Record<string, unknown>>;
+      players[0].delta = 10;
+    });
   });
 
   it('returns missing when no record exists', () => {

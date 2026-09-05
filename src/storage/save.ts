@@ -1,4 +1,6 @@
 import { createDeck } from '../game/deck';
+import { winningPlay } from '../game/rules';
+import { scoreRound } from '../game/scoring';
 import {
   PLAYERS,
   PLAYER_IDS,
@@ -158,7 +160,8 @@ function isGameStateV1(value: Record<string, unknown>): value is Record<string, 
     return false;
   }
 
-  return hasValidCardPartition(value as unknown as GameState);
+  const state = value as unknown as GameState;
+  return hasValidCardPartition(state) && hasValidPhaseState(state);
 }
 
 function isPlayers(value: unknown): boolean {
@@ -330,6 +333,214 @@ function hasValidCardPartition(state: GameState): boolean {
     const playedByPlayer = playedCards.filter((play) => play.playerId === playerId).length;
     return state.hands[playerId].length + playedByPlayer === state.round;
   });
+}
+
+function hasValidPhaseState(state: GameState): boolean {
+  switch (state.phase) {
+    case 'round-setup':
+      return (
+        state.activePlayerId === null &&
+        state.trump === null &&
+        state.revealedUpCard === null &&
+        state.drawPile.length === 0 &&
+        state.bids.length === 0 &&
+        state.currentTrick.length === 0 &&
+        state.completedTricks.length === 0 &&
+        hasEmptyHands(state) &&
+        hasZeroTricksWon(state)
+      );
+
+    case 'choose-trump':
+      return (
+        state.activePlayerId === state.dealerId &&
+        state.revealedUpCard?.kind === 'wizard' &&
+        state.trump === null &&
+        state.bids.length === 0 &&
+        state.currentTrick.length === 0 &&
+        state.completedTricks.length === 0 &&
+        hasFullHands(state) &&
+        hasZeroTricksWon(state)
+      );
+
+    case 'bidding':
+      return (
+        state.bids.length < PLAYER_IDS.length &&
+        hasBidsInOrder(state) &&
+        state.activePlayerId === playerAfter(state.dealerId, state.bids.length + 1) &&
+        state.currentTrick.length === 0 &&
+        state.completedTricks.length === 0 &&
+        hasFullHands(state) &&
+        hasZeroTricksWon(state) &&
+        hasResolvedTrump(state)
+      );
+
+    case 'playing':
+      return (
+        state.bids.length === PLAYER_IDS.length &&
+        hasBidsInOrder(state) &&
+        state.currentTrick.length < PLAYER_IDS.length &&
+        state.completedTricks.length < state.round &&
+        hasValidTrickOrderAndWinners(state) &&
+        state.activePlayerId === expectedCurrentPlayer(state) &&
+        hasMatchingTricksWon(state, false) &&
+        hasResolvedTrump(state)
+      );
+
+    case 'trick-result': {
+      const currentWinner = winnerId(state.currentTrick, state.trump);
+
+      return (
+        state.bids.length === PLAYER_IDS.length &&
+        hasBidsInOrder(state) &&
+        state.currentTrick.length === PLAYER_IDS.length &&
+        state.completedTricks.length < state.round &&
+        hasValidTrickOrderAndWinners(state) &&
+        currentWinner !== null &&
+        state.activePlayerId === currentWinner &&
+        hasMatchingTricksWon(state, true) &&
+        hasResolvedTrump(state)
+      );
+    }
+
+    case 'round-result':
+      return (
+        state.bids.length === PLAYER_IDS.length &&
+        hasBidsInOrder(state) &&
+        state.activePlayerId === null &&
+        state.currentTrick.length === 0 &&
+        state.completedTricks.length === state.round &&
+        hasEmptyHands(state) &&
+        hasValidTrickOrderAndWinners(state) &&
+        hasMatchingTricksWon(state, false) &&
+        hasCurrentRoundScore(state) &&
+        hasResolvedTrump(state)
+      );
+
+    case 'match-result':
+      return false;
+  }
+}
+
+function hasBidsInOrder(state: GameState): boolean {
+  return state.bids.every(
+    (bid, index) => bid.playerId === playerAfter(state.dealerId, index + 1),
+  );
+}
+
+function hasValidTrickOrderAndWinners(state: GameState): boolean {
+  let leaderId = playerAfter(state.dealerId, 1);
+
+  for (const trick of state.completedTricks) {
+    if (
+      !hasPlayersInOrder(trick.plays, leaderId) ||
+      winnerId(trick.plays, state.trump) !== trick.winnerId
+    ) {
+      return false;
+    }
+
+    leaderId = trick.winnerId;
+  }
+
+  return hasPlayersInOrder(state.currentTrick, leaderId);
+}
+
+function hasPlayersInOrder(plays: readonly PlayedCard[], leaderId: PlayerId): boolean {
+  return plays.every((play, index) => play.playerId === playerAfter(leaderId, index));
+}
+
+function expectedCurrentPlayer(state: GameState): PlayerId {
+  const leaderId = state.completedTricks.at(-1)?.winnerId ?? playerAfter(state.dealerId, 1);
+  const lastPlayerId = state.currentTrick.at(-1)?.playerId;
+  return lastPlayerId === undefined ? leaderId : playerAfter(lastPlayerId, 1);
+}
+
+function hasMatchingTricksWon(state: GameState, includeCurrentTrick: boolean): boolean {
+  const expected: Record<PlayerId, number> = { human: 0, ember: 0, rowan: 0, mira: 0 };
+
+  for (const trick of state.completedTricks) {
+    expected[trick.winnerId] += 1;
+  }
+
+  if (includeCurrentTrick) {
+    const currentWinner = winnerId(state.currentTrick, state.trump);
+    if (currentWinner === null) {
+      return false;
+    }
+    expected[currentWinner] += 1;
+  }
+
+  return PLAYER_IDS.every((playerId) => state.tricksWon[playerId] === expected[playerId]);
+}
+
+function winnerId(plays: readonly PlayedCard[], trump: GameState['trump']): PlayerId | null {
+  if (plays.length === 0) {
+    return null;
+  }
+
+  const playerId = winningPlay(plays, trump).playerId;
+  return isPlayerId(playerId) ? playerId : null;
+}
+
+function hasResolvedTrump(state: GameState): boolean {
+  if (state.round === 15) {
+    return state.revealedUpCard === null && state.trump === null;
+  }
+
+  if (state.revealedUpCard === null) {
+    return false;
+  }
+
+  if (state.revealedUpCard.kind === 'suited') {
+    return state.trump === state.revealedUpCard.suit;
+  }
+
+  if (state.revealedUpCard.kind === 'jester') {
+    return state.trump === null;
+  }
+
+  return state.trump !== null;
+}
+
+function hasCurrentRoundScore(state: GameState): boolean {
+  const roundScore = state.roundScores.at(-1);
+
+  if (
+    roundScore === undefined ||
+    roundScore.round !== state.round ||
+    roundScore.trump !== state.trump
+  ) {
+    return false;
+  }
+
+  return PLAYER_IDS.every((playerId, index) => {
+    const playerScore = roundScore.players[index];
+    const bid = state.bids.find((record) => record.playerId === playerId)?.bid;
+
+    return (
+      playerScore?.playerId === playerId &&
+      bid !== undefined &&
+      playerScore.bid === bid &&
+      playerScore.tricks === state.tricksWon[playerId] &&
+      playerScore.delta === scoreRound(bid, state.tricksWon[playerId]) &&
+      playerScore.cumulative === state.scores[playerId]
+    );
+  });
+}
+
+function hasFullHands(state: GameState): boolean {
+  return PLAYER_IDS.every((playerId) => state.hands[playerId].length === state.round);
+}
+
+function hasEmptyHands(state: GameState): boolean {
+  return PLAYER_IDS.every((playerId) => state.hands[playerId].length === 0);
+}
+
+function hasZeroTricksWon(state: GameState): boolean {
+  return PLAYER_IDS.every((playerId) => state.tricksWon[playerId] === 0);
+}
+
+function playerAfter(playerId: PlayerId, offset: number): PlayerId {
+  return PLAYER_IDS[(PLAYER_IDS.indexOf(playerId) + offset) % PLAYER_IDS.length];
 }
 
 function isCardArray(value: unknown): value is Card[] {
