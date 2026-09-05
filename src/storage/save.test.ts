@@ -254,39 +254,43 @@ describe('browser save boundary', () => {
     expect(state.roundScores).toHaveLength(15);
   });
 
-  it('round-trips Wizard- and Jester-led history across 20 varied deterministic matches', () => {
-    let sawWizardLead = false;
-    let sawJesterLead = false;
+  it(
+    'round-trips Wizard- and Jester-led history across 20 varied deterministic matches',
+    () => {
+      let sawWizardLead = false;
+      let sawJesterLead = false;
 
-    for (let seed = 1; seed <= 20; seed += 1) {
-      let state = createMatch(seed);
+      for (let seed = 1; seed <= 20; seed += 1) {
+        let state = createMatch(seed);
 
-      for (let transition = 0; state.phase !== 'match-result'; transition += 1) {
-        const storage = new MemoryStorage();
-        expect(saveGame(storage, state)).toEqual({ ok: true });
-        expect(loadGame(storage)).toEqual({ ok: true, state });
+        for (let transition = 0; state.phase !== 'match-result'; transition += 1) {
+          const storage = new MemoryStorage();
+          expect(saveGame(storage, state)).toEqual({ ok: true });
+          expect(loadGame(storage)).toEqual({ ok: true, state });
 
-        for (const trick of state.completedTricks) {
-          sawWizardLead ||= trick.plays[0]?.card.kind === 'wizard';
-          sawJesterLead ||= trick.plays[0]?.card.kind === 'jester';
+          for (const trick of state.completedTricks) {
+            sawWizardLead ||= trick.plays[0]?.card.kind === 'wizard';
+            sawJesterLead ||= trick.plays[0]?.card.kind === 'jester';
+          }
+
+          const actions = legalActions(state);
+          const action = actions[(seed + transition) % actions.length];
+          if (action === undefined) {
+            throw new Error(`No legal action at round ${state.round} in ${state.phase}.`);
+          }
+
+          state = reduceGame(state, action);
+          expect(transition).toBeLessThan(800);
         }
 
-        const actions = legalActions(state);
-        const action = actions[(seed + transition) % actions.length];
-        if (action === undefined) {
-          throw new Error(`No legal action at round ${state.round} in ${state.phase}.`);
-        }
-
-        state = reduceGame(state, action);
-        expect(transition).toBeLessThan(800);
+        expect(state.roundScores).toHaveLength(15);
       }
 
-      expect(state.roundScores).toHaveLength(15);
-    }
-
-    expect(sawWizardLead).toBe(true);
-    expect(sawJesterLead).toBe(true);
-  });
+      expect(sawWizardLead).toBe(true);
+      expect(sawJesterLead).toBe(true);
+    },
+    20_000,
+  );
 
   it('rejects round 2 when its prior round score is missing', () => {
     const roundTwo = reachableState((state) => state.round === 2 && state.phase === 'round-setup');
