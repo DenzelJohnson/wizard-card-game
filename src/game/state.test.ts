@@ -388,6 +388,79 @@ describe('round and match progression', () => {
     expect(reduceGame(complete, { type: 'ACKNOWLEDGE_ROUND' })).toBe(complete);
   });
 
+  it('completes a deterministic 15-round match using only public legal actions', () => {
+    const transitionLimit = 800;
+    let transitionCount = 0;
+    let state = createMatch(20_260_905);
+    let observedRound15Deal = false;
+    let observedRound15Scoring = false;
+
+    while (state.phase !== 'match-result') {
+      const actions = legalActions(state);
+      const action = actions[0];
+
+      expect(action, `No legal action at round ${state.round} in ${state.phase}.`).toBeDefined();
+
+      if (action === undefined) {
+        throw new Error('A reachable nonterminal state had no legal action.');
+      }
+
+      const previous = state;
+      state = reduceGame(state, action);
+      transitionCount += 1;
+
+      expect(state, `Legal action ${action.type} was rejected.`).not.toBe(previous);
+      expect(transitionCount).toBeLessThanOrEqual(transitionLimit);
+
+      if (previous.round === 15 && action.type === 'DEAL_ROUND') {
+        const cardIds = allDealtCardIds(state);
+
+        observedRound15Deal = true;
+        expect(PLAYER_IDS.map((playerId) => state.hands[playerId].length)).toEqual([15, 15, 15, 15]);
+        expect(cardIds).toHaveLength(60);
+        expect(new Set(cardIds).size).toBe(60);
+        expect(state.drawPile).toEqual([]);
+        expect(state.revealedUpCard).toBeNull();
+        expect(state.trump).toBeNull();
+      }
+
+      if (
+        previous.round === 15 &&
+        action.type === 'ACKNOWLEDGE_TRICK' &&
+        state.phase === 'round-result'
+      ) {
+        observedRound15Scoring = true;
+        expect(state.completedTricks).toHaveLength(15);
+        expect(PLAYER_IDS.map((playerId) => state.hands[playerId].length)).toEqual([0, 0, 0, 0]);
+      }
+    }
+
+    const cumulativeScores: Record<PlayerId, number> = { human: 0, ember: 0, rowan: 0, mira: 0 };
+
+    expect(observedRound15Deal).toBe(true);
+    expect(observedRound15Scoring).toBe(true);
+    expect(state.roundScores).toHaveLength(15);
+    expect(state.roundScores.map(({ round }) => round)).toEqual(
+      Array.from({ length: 15 }, (_, index) => index + 1),
+    );
+
+    for (const roundScore of state.roundScores) {
+      expect(roundScore.players.map(({ playerId }) => playerId)).toEqual(PLAYER_IDS);
+
+      for (const playerScore of roundScore.players) {
+        cumulativeScores[playerScore.playerId] += playerScore.delta;
+        expect(playerScore.cumulative).toBe(cumulativeScores[playerScore.playerId]);
+      }
+    }
+
+    expect(state.phase).toBe('match-result');
+    expect(state.round).toBe(15);
+    expect(state.completedTricks).toHaveLength(15);
+    expect(state.scores).toEqual(cumulativeScores);
+    expect(legalActions(state)).toEqual([]);
+    expect(transitionCount).toBeLessThan(transitionLimit);
+  });
+
   it('returns all players tied for the highest score in clockwise seat order', () => {
     const state: GameState = {
       ...createMatch(42),
