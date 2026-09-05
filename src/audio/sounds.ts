@@ -60,6 +60,8 @@ export function createSoundController(options: SoundControllerOptions = {}): Sou
   const storage = options.storage ?? browserStorage();
   let enabled = readPreference(storage);
   let context: AudioContextLike | null = null;
+  let resumeInFlight: Promise<void> | null = null;
+  let pendingCue: SoundCue | null = null;
   const createAudioContext = options.createAudioContext ?? browserAudioContext;
 
   const ensureContext = (): AudioContextLike | null => {
@@ -76,24 +78,84 @@ export function createSoundController(options: SoundControllerOptions = {}): Sou
     return context;
   };
 
-  const resumeContext = (activeContext: AudioContextLike | null): void => {
-    if (activeContext === null) {
+  const scheduleCue = (activeContext: AudioContextLike, cue: SoundCue): void => {
+    try {
+      const tone = CUES[cue];
+      const now = activeContext.currentTime;
+      const oscillator = activeContext.createOscillator();
+      const gain = activeContext.createGain();
+      oscillator.type = tone.type;
+      oscillator.frequency.setValueAtTime(tone.frequency, now);
+      gain.gain.setValueAtTime(0.025, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + tone.duration);
+      oscillator.connect(gain);
+      gain.connect(activeContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + tone.duration);
+    } catch {
+      // Interface audio must never interrupt game play.
+    }
+  };
+
+  const beginResume = (activeContext: AudioContextLike): void => {
+    if (resumeInFlight !== null) {
       return;
     }
+
     try {
-      if (activeContext.state !== 'suspended' || typeof activeContext.resume !== 'function') {
+      if (activeContext.state !== 'suspended') {
+        const cue = pendingCue;
+        pendingCue = null;
+        if (cue !== null && enabled && context === activeContext) {
+          scheduleCue(activeContext, cue);
+        }
         return;
       }
-      const resumed = activeContext.resume();
-      void Promise.resolve(resumed).catch(() => undefined);
+      if (typeof activeContext.resume !== 'function') {
+        pendingCue = null;
+        return;
+      }
+
+      const attempt = Promise.resolve(activeContext.resume());
+      resumeInFlight = attempt;
+      void attempt.then(
+        () => {
+          if (resumeInFlight !== attempt) {
+            return;
+          }
+          resumeInFlight = null;
+          const cue = pendingCue;
+          pendingCue = null;
+          if (!enabled || context !== activeContext || cue === null) {
+            return;
+          }
+          try {
+            if (activeContext.state === 'suspended') {
+              return;
+            }
+          } catch {
+            return;
+          }
+          scheduleCue(activeContext, cue);
+        },
+        () => {
+          if (resumeInFlight === attempt) {
+            resumeInFlight = null;
+            pendingCue = null;
+          }
+        },
+      );
     } catch {
-      // Audio remains supplementary when a browser rejects activation.
+      resumeInFlight = null;
+      pendingCue = null;
     }
   };
 
   const releaseContext = (): void => {
     const activeContext = context;
     context = null;
+    resumeInFlight = null;
+    pendingCue = null;
     if (activeContext === null) {
       return;
     }
@@ -114,7 +176,10 @@ export function createSoundController(options: SoundControllerOptions = {}): Sou
       writePreference(storage, enabled);
 
       if (enabled) {
-        resumeContext(ensureContext());
+        const activeContext = ensureContext();
+        if (activeContext !== null) {
+          beginResume(activeContext);
+        }
       } else {
         releaseContext();
       }
@@ -131,19 +196,16 @@ export function createSoundController(options: SoundControllerOptions = {}): Sou
         if (activeContext === null) {
           return;
         }
-        resumeContext(activeContext);
-        const tone = CUES[cue];
-        const now = activeContext.currentTime;
-        const oscillator = activeContext.createOscillator();
-        const gain = activeContext.createGain();
-        oscillator.type = tone.type;
-        oscillator.frequency.setValueAtTime(tone.frequency, now);
-        gain.gain.setValueAtTime(0.025, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + tone.duration);
-        oscillator.connect(gain);
-        gain.connect(activeContext.destination);
-        oscillator.start(now);
-        oscillator.stop(now + tone.duration);
+        if (resumeInFlight !== null) {
+          pendingCue = cue;
+          return;
+        }
+        if (activeContext.state === 'suspended') {
+          pendingCue = cue;
+          beginResume(activeContext);
+          return;
+        }
+        scheduleCue(activeContext, cue);
       } catch {
         // Interface audio must never interrupt game play.
       }

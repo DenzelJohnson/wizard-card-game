@@ -183,7 +183,7 @@ describe('sound controller', () => {
     }).not.toThrow();
   });
 
-  it('resumes after opt-in and synthesizes restrained short cues', () => {
+  it('resumes after opt-in and synthesizes restrained short cues', async () => {
     const harness = audioHarness();
     const sound = createSoundController({
       storage: new MemoryStorage(),
@@ -191,6 +191,7 @@ describe('sound controller', () => {
     });
 
     sound.toggle();
+    await Promise.resolve();
     sound.play('card');
     sound.play('trick');
     sound.play('round');
@@ -210,7 +211,7 @@ describe('sound controller', () => {
     }
   });
 
-  it('can play after a previously persisted opt-in without rewriting the preference', () => {
+  it('can play after a previously persisted opt-in without rewriting the preference', async () => {
     const storage = new MemoryStorage();
     storage.values.set(SOUND_KEY, 'true');
     const harness = audioHarness();
@@ -218,16 +219,24 @@ describe('sound controller', () => {
     const sound = createSoundController({ storage, createAudioContext });
 
     sound.play('card');
+    await Promise.resolve();
 
     expect(createAudioContext).toHaveBeenCalledOnce();
     expect(harness.context.createOscillator).toHaveBeenCalledOnce();
     expect(storage.writes).toEqual([]);
   });
 
-  it('retries a rejected resume on a later play', async () => {
+  it('drops a cue when resume rejects and schedules one cue after a later successful retry', async () => {
     const storage = new MemoryStorage();
     storage.values.set(SOUND_KEY, 'true');
     const harness = audioHarness();
+    const start = vi.fn();
+    harness.context.createOscillator = vi.fn(() => ({
+      frequency: { setValueAtTime: vi.fn() },
+      connect: vi.fn(),
+      start,
+      stop: vi.fn(),
+    }));
     const resume = vi.fn(() => {
       if (resume.mock.calls.length === 1) {
         return Promise.reject(new Error('gesture required'));
@@ -243,10 +252,83 @@ describe('sound controller', () => {
 
     sound.play('card');
     await Promise.resolve();
-    sound.play('card');
+
+    expect(harness.context.createOscillator).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+
+    sound.play('trick');
+    await Promise.resolve();
 
     expect(resume).toHaveBeenCalledTimes(2);
+    expect(harness.context.createOscillator).toHaveBeenCalledOnce();
+    expect(start).toHaveBeenCalledOnce();
   });
+
+  it('coalesces plays behind one pending resume and keeps only the latest cue', async () => {
+    const storage = new MemoryStorage();
+    storage.values.set(SOUND_KEY, 'true');
+    const harness = audioHarness();
+    let resolveResume!: () => void;
+    const resumePromise = new Promise<void>((resolve) => {
+      resolveResume = () => {
+        harness.setState('running');
+        resolve();
+      };
+    });
+    harness.context.resume = vi.fn(() => resumePromise);
+    const sound = createSoundController({
+      storage,
+      createAudioContext: () => harness.context,
+    });
+
+    sound.play('card');
+    sound.play('trick');
+
+    expect(harness.context.resume).toHaveBeenCalledOnce();
+    expect(harness.context.createOscillator).not.toHaveBeenCalled();
+
+    resolveResume();
+    await resumePromise;
+    await Promise.resolve();
+
+    expect(harness.context.resume).toHaveBeenCalledOnce();
+    expect(harness.context.createOscillator).toHaveBeenCalledOnce();
+    expect(harness.oscillators[0]?.frequency.setValueAtTime).toHaveBeenCalledWith(494, 12);
+    expect(harness.oscillators[0]?.start).toHaveBeenCalledOnce();
+  });
+
+  it.each(['disable', 'dispose'] as const)(
+    'invalidates a pending cue on %s',
+    async (cleanup) => {
+      const storage = new MemoryStorage();
+      storage.values.set(SOUND_KEY, 'true');
+      const harness = audioHarness();
+      let resolveResume!: () => void;
+      const resumePromise = new Promise<void>((resolve) => {
+        resolveResume = () => {
+          harness.setState('running');
+          resolve();
+        };
+      });
+      harness.context.resume = vi.fn(() => resumePromise);
+      const sound = createSoundController({
+        storage,
+        createAudioContext: () => harness.context,
+      });
+      sound.play('round');
+
+      if (cleanup === 'disable') {
+        sound.toggle();
+      } else {
+        sound.dispose();
+      }
+      resolveResume();
+      await resumePromise;
+      await Promise.resolve();
+
+      expect(harness.context.createOscillator).not.toHaveBeenCalled();
+    },
+  );
 
   it('does not throw when reading audio context state fails', () => {
     const harness = audioHarness();
@@ -264,16 +346,18 @@ describe('sound controller', () => {
     expect(() => sound.play('card')).not.toThrow();
   });
 
-  it('resumes a reused suspended context before scheduling another cue', () => {
+  it('resumes a reused suspended context before scheduling another cue', async () => {
     const harness = audioHarness();
     const sound = createSoundController({
       storage: new MemoryStorage(),
       createAudioContext: () => harness.context,
     });
     sound.toggle();
+    await Promise.resolve();
     harness.setState('suspended');
 
     sound.play('trick');
+    await Promise.resolve();
 
     expect(harness.context.resume).toHaveBeenCalledTimes(2);
     expect(harness.context.createOscillator).toHaveBeenCalledOnce();
