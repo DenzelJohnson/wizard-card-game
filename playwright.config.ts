@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL?.trim() || undefined;
 const fallbackBaseUrl = 'http://127.0.0.1:4173';
+const invocationOutputDir = `test-results/playwright/${process.pid}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -13,7 +14,7 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  outputDir: 'test-results/playwright',
+  outputDir: invocationOutputDir,
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'line',
   use: {
     baseURL: externalBaseUrl ?? fallbackBaseUrl,
