@@ -1,7 +1,13 @@
+import { useEffect, useRef } from 'react';
+
+import { useSounds, type SoundController } from '../audio/sounds';
 import type { Card, GameAction, GameState, PlayerId, PlayerMetadata, Suit } from '../game/types';
 import { BidPanel } from './BidPanel';
+import { GameMenu } from './GameMenu';
+import { MatchResult } from './MatchResult';
 import { PlayerSeat, type SeatPosition } from './PlayerSeat';
 import { cardName, PlayingCard, suitName, suitSymbol } from './PlayingCard';
+import { RoundSummary } from './RoundSummary';
 import { StorageWarning } from './StorageWarning';
 import { TrickArea } from './TrickArea';
 import { TrumpPanel } from './TrumpPanel';
@@ -11,6 +17,10 @@ export interface GameTableProps {
   readonly legalActions: readonly GameAction[];
   readonly onAction: (action: GameAction) => void;
   readonly storageWarning?: boolean;
+  readonly onContinueRound?: () => void;
+  readonly onRestart?: () => void;
+  readonly onHome?: () => void;
+  readonly sounds?: SoundController;
 }
 
 const SEAT_POSITIONS: Readonly<Record<PlayerId, SeatPosition>> = {
@@ -25,7 +35,14 @@ export function GameTable({
   legalActions,
   onAction,
   storageWarning = false,
+  onContinueRound = doNothing,
+  onRestart = doNothing,
+  onHome = doNothing,
+  sounds,
 }: GameTableProps) {
+  const browserSounds = useSounds();
+  const activeSounds = sounds ?? browserSounds;
+  const previousAudioStateRef = useRef(audioSnapshot(state));
   const human = state.players.find((player) => player.id === 'human');
   const opponents = state.players.filter((player) => player.id !== 'human');
   const activeDecisionPlayerId = isDecisionPhase(state.phase) ? state.activePlayerId : null;
@@ -42,6 +59,28 @@ export function GameTable({
       ? legalActions.filter(isHumanTrumpAction)
       : [];
 
+  useEffect(() => {
+    const previous = previousAudioStateRef.current;
+    const current = audioSnapshot(state);
+    previousAudioStateRef.current = current;
+
+    if (previous.matchId !== current.matchId) {
+      return;
+    }
+    if (current.playCount > previous.playCount) {
+      activeSounds.play('card');
+    }
+    if (current.phase !== previous.phase && current.phase === 'trick-result') {
+      activeSounds.play('trick');
+    }
+    if (
+      current.phase !== previous.phase &&
+      (current.phase === 'round-result' || current.phase === 'match-result')
+    ) {
+      activeSounds.play('round');
+    }
+  }, [activeSounds, state]);
+
   return (
     <main className="game-table" aria-labelledby="game-table-heading">
       <header className="table-status">
@@ -53,6 +92,14 @@ export function GameTable({
         {storageWarning ? <StorageWarning /> : null}
         <TrumpDisplay state={state} />
       </header>
+
+      <GameMenu
+        state={state}
+        soundEnabled={activeSounds.enabled}
+        onToggleSound={activeSounds.toggle}
+        onRestart={onRestart}
+        onHome={onHome}
+      />
 
       <TrickArea plays={state.currentTrick} players={state.players} />
 
@@ -120,9 +167,32 @@ export function GameTable({
           />
         ))}
       </section>
+
+      {state.phase === 'round-result' ? (
+        <RoundSummary state={state} onContinue={onContinueRound} />
+      ) : null}
+      {state.phase === 'match-result' ? (
+        <MatchResult state={state} onNewMatch={onRestart} onHome={onHome} />
+      ) : null}
     </main>
   );
 }
+
+function audioSnapshot(state: GameState): {
+  readonly matchId: string;
+  readonly phase: GameState['phase'];
+  readonly playCount: number;
+} {
+  return {
+    matchId: state.matchId,
+    phase: state.phase,
+    playCount:
+      state.currentTrick.length +
+      state.completedTricks.reduce((total, trick) => total + trick.plays.length, 0),
+  };
+}
+
+function doNothing(): void {}
 
 function Seat({
   player,

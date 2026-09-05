@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { AccessibleDialog } from './AccessibleDialog';
+import { RulesDialog } from './RulesDialog';
 import { StorageWarning } from './StorageWarning';
 
 export interface HomeScreenProps {
@@ -17,32 +19,14 @@ export function HomeScreen({
   onStart,
   onContinue,
 }: HomeScreenProps) {
-  const [confirmingNewGame, setConfirmingNewGame] = useState(false);
+  const [openDialog, setOpenDialog] = useState<'new-game' | 'rules' | null>(null);
   const easyButtonRef = useRef<HTMLButtonElement>(null);
+  const rulesButtonRef = useRef<HTMLButtonElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const restoreEasyFocusRef = useRef(false);
-
-  useEffect(() => {
-    if (confirmingNewGame) {
-      cancelButtonRef.current?.focus();
-      return;
-    }
-
-    if (restoreEasyFocusRef.current) {
-      restoreEasyFocusRef.current = false;
-      easyButtonRef.current?.focus();
-    }
-  }, [confirmingNewGame]);
-
-  const closeConfirmation = (): void => {
-    restoreEasyFocusRef.current = true;
-    setConfirmingNewGame(false);
-  };
 
   const startEasyGame = (): void => {
     if (hasSavedGame) {
-      setConfirmingNewGame(true);
+      setOpenDialog('new-game');
       return;
     }
 
@@ -50,27 +34,13 @@ export function HomeScreen({
   };
 
   const confirmNewGame = (): void => {
-    setConfirmingNewGame(false);
+    setOpenDialog(null);
     onStart();
   };
 
   return (
-    <main
-      className="home-screen"
-      aria-labelledby="wizard-title"
-      onFocusCapture={(event) => {
-        if (confirmingNewGame && !dialogRef.current?.contains(event.target as Node)) {
-          cancelButtonRef.current?.focus();
-        }
-      }}
-      onKeyDownCapture={(event) => {
-        if (confirmingNewGame && event.key === 'Escape') {
-          event.preventDefault();
-          closeConfirmation();
-        }
-      }}
-    >
-      <div inert={confirmingNewGame || undefined} aria-hidden={confirmingNewGame || undefined}>
+    <main className="home-screen" aria-labelledby="wizard-title">
+      <div inert={openDialog !== null || undefined} aria-hidden={openDialog !== null || undefined}>
         <header>
           <h1 id="wizard-title">Wizard</h1>
           <p>Predict your tricks, command the trump suit, and outscore three rival spellcasters.</p>
@@ -94,41 +64,32 @@ export function HomeScreen({
           </button>
           <p id={HARD_MODE_DESCRIPTION_ID}>Hard mode is in Beta and coming soon.</p>
         </section>
+        <button ref={rulesButtonRef} type="button" onClick={() => setOpenDialog('rules')}>
+          Rules
+        </button>
       </div>
 
-      {confirmingNewGame ? (
-        <div
-          ref={dialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={NEW_GAME_DIALOG_TITLE_ID}
-          onKeyDown={(event) => {
-            if (event.key === 'Tab') {
-              event.preventDefault();
-              const buttons = Array.from(
-                dialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ??
-                  [],
-              );
-              const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
-              const direction = event.shiftKey ? -1 : 1;
-              const nextIndex =
-                currentIndex < 0
-                  ? 0
-                  : (currentIndex + direction + buttons.length) % buttons.length;
-              buttons[nextIndex]?.focus();
-            }
-          }}
-        >
-          <h2 id={NEW_GAME_DIALOG_TITLE_ID}>Start a new game?</h2>
-          <p>Your saved match will be replaced.</p>
-          <button type="button" onClick={confirmNewGame}>
-            Start New Game
-          </button>
-          <button ref={cancelButtonRef} type="button" onClick={closeConfirmation}>
-            Cancel
-          </button>
-        </div>
-      ) : null}
+      <AccessibleDialog
+        open={openDialog === 'new-game'}
+        titleId={NEW_GAME_DIALOG_TITLE_ID}
+        onClose={() => setOpenDialog(null)}
+        initialFocusRef={cancelButtonRef}
+        returnFocusRef={easyButtonRef}
+      >
+        <h2 id={NEW_GAME_DIALOG_TITLE_ID}>Start a new game?</h2>
+        <p>Your saved match will be replaced.</p>
+        <button type="button" onClick={confirmNewGame}>
+          Start New Game
+        </button>
+        <button ref={cancelButtonRef} type="button" onClick={() => setOpenDialog(null)}>
+          Cancel
+        </button>
+      </AccessibleDialog>
+      <RulesDialog
+        open={openDialog === 'rules'}
+        onClose={() => setOpenDialog(null)}
+        returnFocusRef={rulesButtonRef}
+      />
     </main>
   );
 }

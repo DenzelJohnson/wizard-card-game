@@ -7,3 +7,18 @@
 body {
   margin: 0;
 }
+
+dialog {
+  max-height: min(85vh, 48rem);
+  max-width: min(90vw, 52rem);
+  overflow: auto;
+}
+
+[inert] {
+  pointer-events: none;
+}
+
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}

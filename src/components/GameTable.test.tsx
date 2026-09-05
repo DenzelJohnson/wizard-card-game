@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createMatch, legalActions, reduceGame } from '../game/state';
 import type { Card, GameAction, GameState } from '../game/types';
 import { isSemanticallyValidGameState } from '../game/validation';
+import type { SoundController } from '../audio/sounds';
 import { GameTable } from './GameTable';
 import { cardName } from './PlayingCard';
 
@@ -115,6 +116,28 @@ function resolvedNonLeaderWinState(): GameState {
   }
 
   throw new Error('Unable to find a valid non-leader trick-win fixture.');
+}
+
+function scoredState(phase: 'round-result' | 'match-result' = 'round-result'): GameState {
+  return displayState({
+    phase,
+    round: phase === 'match-result' ? 15 : 3,
+    activePlayerId: null,
+    hands: { human: [], ember: [], rowan: [], mira: [] },
+    scores: { human: 40, ember: 20, rowan: -10, mira: 40 },
+    roundScores: [
+      {
+        round: phase === 'match-result' ? 15 : 3,
+        trump: null,
+        players: [
+          { playerId: 'human', bid: 2, tricks: 2, delta: 40, cumulative: 40 },
+          { playerId: 'ember', bid: 0, tricks: 0, delta: 20, cumulative: 20 },
+          { playerId: 'rowan', bid: 1, tricks: 2, delta: -10, cumulative: -10 },
+          { playerId: 'mira', bid: 2, tricks: 2, delta: 40, cumulative: 40 },
+        ],
+      },
+    ],
+  });
 }
 
 describe('GameTable', () => {
@@ -334,5 +357,131 @@ describe('GameTable', () => {
         /this match can continue, but resume may be unavailable/i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it('shows the game menu and routes the stored round summary Continue action', () => {
+    const state = scoredState();
+    const onContinueRound = vi.fn();
+    render(
+      <GameTable
+        state={state}
+        legalActions={legalActions(state)}
+        onAction={vi.fn()}
+        onContinueRound={onContinueRound}
+        onRestart={vi.fn()}
+        onHome={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('toolbar', { name: 'Game menu' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Round 3 complete' })).toBeInTheDocument();
+    expect(screen.getByRole('listitem', { name: 'You' })).toHaveTextContent(
+      '20 + (10 × 2) = +40',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(onContinueRound).toHaveBeenCalledOnce();
+  });
+
+  it('shows final winners and routes new-match and home actions', () => {
+    const onRestart = vi.fn();
+    const onHome = vi.fn();
+    const state = scoredState('match-result');
+    render(
+      <GameTable
+        state={state}
+        legalActions={legalActions(state)}
+        onAction={vi.fn()}
+        onContinueRound={vi.fn()}
+        onRestart={onRestart}
+        onHome={onHome}
+      />,
+    );
+
+    const result = screen.getByRole('region', { name: 'Match complete' });
+    expect(within(result).getByRole('status')).toHaveTextContent(
+      'You and Mira share the win with 40 points!',
+    );
+    fireEvent.click(within(result).getByRole('button', { name: 'New Match' }));
+    fireEvent.click(within(result).getByRole('button', { name: 'Return Home' }));
+    expect(onRestart).toHaveBeenCalledOnce();
+    expect(onHome).toHaveBeenCalledOnce();
+  });
+
+  it('plays cues only for new state transitions and never merely on mount or rerender', () => {
+    const play = vi.fn();
+    const sounds: SoundController = {
+      enabled: true,
+      toggle: vi.fn(() => false),
+      play,
+    };
+    const initial = restrictedFollowSuitState('ember');
+    const props = {
+      legalActions: legalActions(initial),
+      onAction: vi.fn(),
+      onContinueRound: vi.fn(),
+      onRestart: vi.fn(),
+      onHome: vi.fn(),
+      sounds,
+    };
+    const { rerender } = render(<GameTable state={initial} {...props} />);
+
+    expect(play).not.toHaveBeenCalled();
+    rerender(<GameTable state={initial} {...props} />);
+    expect(play).not.toHaveBeenCalled();
+
+    const onePlay = {
+      ...initial,
+      currentTrick: [
+        {
+          playerId: 'ember' as const,
+          card: { id: 'played-ember-club-four', kind: 'suited' as const, suit: 'clubs' as const, rank: 4 as const },
+        },
+      ],
+    };
+    rerender(<GameTable state={onePlay} {...props} />);
+    expect(play).toHaveBeenLastCalledWith('card');
+
+    const trickResult = {
+      ...onePlay,
+      phase: 'trick-result' as const,
+      activePlayerId: 'mira' as const,
+      currentTrick: [
+        ...onePlay.currentTrick,
+        { playerId: 'rowan' as const, card: { id: 'play-2', kind: 'jester' as const } },
+        { playerId: 'mira' as const, card: { id: 'play-3', kind: 'wizard' as const } },
+        { playerId: 'human' as const, card: { id: 'play-4', kind: 'jester' as const } },
+      ],
+    };
+    rerender(<GameTable state={trickResult} {...props} />);
+    expect(play.mock.calls.slice(-2)).toEqual([['card'], ['trick']]);
+
+    const roundResult = scoredState();
+    rerender(<GameTable state={roundResult} {...props} />);
+    expect(play).toHaveBeenLastCalledWith('round');
+    rerender(<GameTable state={roundResult} {...props} />);
+    expect(play).toHaveBeenCalledTimes(4);
+  });
+
+  it('does not replay a result cue when mounting a saved result state', () => {
+    const sounds: SoundController = {
+      enabled: true,
+      toggle: vi.fn(() => false),
+      play: vi.fn(),
+    };
+    const state = scoredState();
+    render(
+      <GameTable
+        state={state}
+        legalActions={legalActions(state)}
+        onAction={vi.fn()}
+        onContinueRound={vi.fn()}
+        onRestart={vi.fn()}
+        onHome={vi.fn()}
+        sounds={sounds}
+      />,
+    );
+
+    expect(sounds.play).not.toHaveBeenCalled();
   });
 });

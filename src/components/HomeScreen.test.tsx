@@ -118,4 +118,21 @@ describe('HomeScreen', () => {
       /this match can continue, but resume may be unavailable/i,
     );
   });
+
+  it('opens the rules from home, closes with Escape, and restores focus', async () => {
+    renderHome();
+    const rulesButton = screen.getByRole('button', { name: 'Rules' });
+
+    fireEvent.click(rulesButton);
+    expect(screen.getByRole('dialog', { name: 'How to play Wizard' })).toHaveTextContent(
+      /60-card deck/i,
+    );
+
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'How to play Wizard' }), {
+      key: 'Escape',
+    });
+
+    expect(screen.queryByRole('dialog', { name: 'How to play Wizard' })).not.toBeInTheDocument();
+    expect(rulesButton).toHaveFocus();
+  });
 });

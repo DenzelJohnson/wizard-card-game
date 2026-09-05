@@ -12,6 +12,9 @@ export function App() {
         legalActions={game.legalActions}
         onAction={game.dispatchHuman}
         storageWarning={game.storageWarning}
+        onContinueRound={game.acknowledgeRound}
+        onRestart={() => game.startGame()}
+        onHome={game.abandonGame}
       />
     );
   }

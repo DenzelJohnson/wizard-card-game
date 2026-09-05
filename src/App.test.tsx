@@ -104,4 +104,53 @@ describe('App', () => {
       bid: 1,
     });
   });
+
+  it('routes round acknowledgement from the round summary', () => {
+    const acknowledgeRound = vi.fn();
+    const state = {
+      ...createMatch(42),
+      phase: 'round-result' as const,
+      roundScores: [
+        {
+          round: 1,
+          trump: null,
+          players: [
+            { playerId: 'human' as const, bid: 0, tricks: 0, delta: 20, cumulative: 20 },
+            { playerId: 'ember' as const, bid: 0, tricks: 0, delta: 20, cumulative: 20 },
+            { playerId: 'rowan' as const, bid: 0, tricks: 0, delta: 20, cumulative: 20 },
+            { playerId: 'mira' as const, bid: 0, tricks: 0, delta: 20, cumulative: 20 },
+          ],
+        },
+      ],
+    };
+    useWizardGameMock.mockReturnValue(
+      controller({ screen: 'game', state, acknowledgeRound }),
+    );
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(acknowledgeRound).toHaveBeenCalledOnce();
+  });
+
+  it('routes final new-match and home actions to start and abandon', () => {
+    const startGame = vi.fn();
+    const abandonGame = vi.fn();
+    const state = {
+      ...createMatch(42),
+      phase: 'match-result' as const,
+      scores: { human: 40, ember: 20, rowan: 0, mira: -10 },
+    };
+    useWizardGameMock.mockReturnValue(
+      controller({ screen: 'game', state, startGame, abandonGame }),
+    );
+
+    render(<App />);
+    const result = screen.getByRole('region', { name: 'Match complete' });
+    fireEvent.click(within(result).getByRole('button', { name: 'New Match' }));
+    fireEvent.click(within(result).getByRole('button', { name: 'Return Home' }));
+
+    expect(startGame).toHaveBeenCalledOnce();
+    expect(abandonGame).toHaveBeenCalledOnce();
+  });
 });
