@@ -167,7 +167,7 @@ describe('MatchResult', () => {
       within(screen.getByRole('list', { name: 'Final standings' }))
         .getAllByRole('listitem')
         .map((item) => item.textContent),
-    ).toEqual(['1. You — 110', '2. Ember — 60', '3. Rowan — 60', '4. Mira — −20']);
+    ).toEqual(['You — 110', 'Ember — 60', 'Rowan — 60', 'Mira — −20']);
 
     fireEvent.click(screen.getByRole('button', { name: 'New Match' }));
     fireEvent.click(screen.getByRole('button', { name: 'Return Home' }));
@@ -185,6 +185,16 @@ describe('MatchResult', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Ember and Rowan share the win with 120 points!',
     );
+    const standings = within(screen.getByRole('list', { name: 'Final standings' })).getAllByRole(
+      'listitem',
+    );
+    expect(standings.map((item) => (item as HTMLLIElement).value)).toEqual([1, 1, 3, 4]);
+    expect(standings.map((item) => item.textContent)).toEqual([
+      'Ember — 120',
+      'Rowan — 120',
+      'You — 100',
+      'Mira — 0',
+    ]);
     fireEvent.click(screen.getByRole('button', { name: 'Score Sheet' }));
     expect(screen.getByRole('dialog', { name: 'Score sheet' })).toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Complete score sheet' })).toBeInTheDocument();
@@ -253,14 +263,15 @@ describe('GameMenu', () => {
     const onToggleSound = vi.fn();
     render(<MenuHarness onToggleSound={onToggleSound} />);
 
-    const toolbar = screen.getByRole('toolbar', { name: 'Game menu' });
+    const menu = screen.getByRole('group', { name: 'Game menu' });
+    expect(screen.queryByRole('toolbar', { name: 'Game menu' })).not.toBeInTheDocument();
     const scoresButton = screen.getByRole('button', { name: 'Score Sheet' });
     fireEvent.click(scoresButton);
     expect(screen.getByRole('dialog', { name: 'Score sheet' })).toBeInTheDocument();
-    expect(toolbar).toHaveAttribute('inert');
+    expect(menu).toHaveAttribute('inert');
     fireEvent.click(screen.getByRole('button', { name: 'Close score sheet' }));
     await waitFor(() => expect(scoresButton).toHaveFocus());
-    expect(toolbar).not.toHaveAttribute('inert');
+    expect(menu).not.toHaveAttribute('inert');
 
     const rulesButton = screen.getByRole('button', { name: 'Rules' });
     fireEvent.click(rulesButton);
@@ -270,14 +281,14 @@ describe('GameMenu', () => {
     });
     await waitFor(() => expect(rulesButton).toHaveFocus());
 
-    const soundButton = screen.getByRole('button', { name: 'Sound Off' });
+    const soundButton = screen.getByRole('button', { name: 'Sound' });
     expect(soundButton).toHaveAttribute('aria-pressed', 'false');
+    expect(within(soundButton).getByText('Off')).toBeVisible();
     fireEvent.click(soundButton);
     expect(onToggleSound).toHaveBeenCalledOnce();
-    expect(screen.getByRole('button', { name: 'Sound On' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(screen.getByRole('button', { name: 'Sound' })).toBe(soundButton);
+    expect(soundButton).toHaveAttribute('aria-pressed', 'true');
+    expect(within(soundButton).getByText('On')).toBeVisible();
   });
 
   it('cancels or confirms restart with the consequence, Escape, and focus restoration', async () => {
@@ -288,6 +299,10 @@ describe('GameMenu', () => {
     fireEvent.click(restart);
     const firstDialog = screen.getByRole('dialog', { name: 'Restart match?' });
     expect(firstDialog).toHaveTextContent(/unfinished match.*lost/i);
+    expect(firstDialog).toHaveAccessibleDescription(
+      'Your current unfinished match will be lost and replaced with a new match.',
+    );
+    expect(firstDialog).toHaveAttribute('aria-describedby', 'restart-match-description');
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
     fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key: 'Tab' });
     expect(screen.getByRole('button', { name: 'Restart Match' })).toHaveFocus();
@@ -316,6 +331,10 @@ describe('GameMenu', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Return Home' }));
     const dialog = screen.getByRole('dialog', { name: 'Return home?' });
     expect(dialog).toHaveTextContent(/unfinished match.*abandoned/i);
+    expect(dialog).toHaveAccessibleDescription(
+      'Your unfinished match will be abandoned and its saved progress removed.',
+    );
+    expect(dialog).toHaveAttribute('aria-describedby', 'return-home-description');
     expect(onHome).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Return Home and Abandon Match' }));
     expect(onHome).toHaveBeenCalledOnce();

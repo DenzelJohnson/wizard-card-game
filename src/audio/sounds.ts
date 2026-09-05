@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export const SOUND_KEY = 'wizard-card-game/sound-enabled';
 
@@ -32,6 +32,8 @@ export interface AudioContextLike {
   readonly state?: string;
   readonly destination: unknown;
   resume?(): Promise<void> | void;
+  suspend?(): Promise<void> | void;
+  close?(): Promise<void> | void;
   createOscillator(): OscillatorLike;
   createGain(): GainLike;
 }
@@ -40,6 +42,7 @@ export interface SoundController {
   readonly enabled: boolean;
   toggle(): boolean;
   play(cue: SoundCue): void;
+  dispose(): void;
 }
 
 export interface SoundControllerOptions {
@@ -74,15 +77,32 @@ export function createSoundController(options: SoundControllerOptions = {}): Sou
   };
 
   const resumeContext = (activeContext: AudioContextLike | null): void => {
-    if (activeContext?.state !== 'suspended' || typeof activeContext.resume !== 'function') {
+    if (activeContext === null) {
       return;
     }
     try {
+      if (activeContext.state !== 'suspended' || typeof activeContext.resume !== 'function') {
+        return;
+      }
       const resumed = activeContext.resume();
       void Promise.resolve(resumed).catch(() => undefined);
     } catch {
       // Audio remains supplementary when a browser rejects activation.
     }
+  };
+
+  const releaseContext = (): void => {
+    const activeContext = context;
+    context = null;
+    if (activeContext === null) {
+      return;
+    }
+
+    if (typeof activeContext.close === 'function') {
+      settleAudioOperation(() => activeContext.close?.(), () => activeContext.suspend?.());
+      return;
+    }
+    settleAudioOperation(() => activeContext.suspend?.());
   };
 
   return {
@@ -95,6 +115,8 @@ export function createSoundController(options: SoundControllerOptions = {}): Sou
 
       if (enabled) {
         resumeContext(ensureContext());
+      } else {
+        releaseContext();
       }
 
       return enabled;
@@ -105,14 +127,11 @@ export function createSoundController(options: SoundControllerOptions = {}): Sou
       }
 
       try {
-        const needsResume = context === null;
         const activeContext = ensureContext();
         if (activeContext === null) {
           return;
         }
-        if (needsResume) {
-          resumeContext(activeContext);
-        }
+        resumeContext(activeContext);
         const tone = CUES[cue];
         const now = activeContext.currentTime;
         const oscillator = activeContext.createOscillator();
@@ -129,6 +148,9 @@ export function createSoundController(options: SoundControllerOptions = {}): Sou
         // Interface audio must never interrupt game play.
       }
     },
+    dispose(): void {
+      releaseContext();
+    },
   };
 }
 
@@ -142,7 +164,24 @@ export function useSounds(options: SoundControllerOptions = {}): SoundController
   }, [controller]);
   const play = useCallback((cue: SoundCue) => controller.play(cue), [controller]);
 
-  return { enabled, toggle, play };
+  useEffect(() => () => controller.dispose(), [controller]);
+
+  return { enabled, toggle, play, dispose: controller.dispose };
+}
+
+function settleAudioOperation(operation: () => Promise<void> | void | undefined, fallback?: () => Promise<void> | void | undefined): void {
+  try {
+    const result = operation();
+    void Promise.resolve(result).catch(() => {
+      if (fallback !== undefined) {
+        settleAudioOperation(fallback);
+      }
+    });
+  } catch {
+    if (fallback !== undefined) {
+      settleAudioOperation(fallback);
+    }
+  }
 }
 
 function readPreference(storage: SoundStorageLike | undefined): boolean {

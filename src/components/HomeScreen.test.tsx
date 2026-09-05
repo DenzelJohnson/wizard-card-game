@@ -57,7 +57,9 @@ describe('HomeScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
 
     expect(props.onStart).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog', { name: 'Start a new game?' })).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Start a new game?' });
+    expect(dialog).toHaveAccessibleDescription('Your saved match will be replaced.');
+    expect(dialog).toHaveAttribute('aria-describedby', 'new-game-dialog-description');
 
     fireEvent.click(screen.getByRole('button', { name: 'Start New Game' }));
 

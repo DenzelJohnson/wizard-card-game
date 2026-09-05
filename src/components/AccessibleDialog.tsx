@@ -9,6 +9,7 @@ import {
 export interface AccessibleDialogProps {
   readonly open: boolean;
   readonly titleId: string;
+  readonly descriptionId?: string;
   readonly onClose: () => void;
   readonly children: ReactNode;
   readonly initialFocusRef?: RefObject<HTMLElement | null>;
@@ -28,6 +29,7 @@ const FOCUSABLE_SELECTOR = [
 export function AccessibleDialog({
   open,
   titleId,
+  descriptionId,
   onClose,
   children,
   initialFocusRef,
@@ -138,6 +140,7 @@ export function AccessibleDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      aria-describedby={descriptionId}
       onCancel={(event) => {
         event.preventDefault();
         onClose();

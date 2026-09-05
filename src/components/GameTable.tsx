@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react';
 
-import { useSounds, type SoundController } from '../audio/sounds';
+import {
+  useSounds,
+  type SoundController,
+  type SoundControllerOptions,
+} from '../audio/sounds';
 import type { Card, GameAction, GameState, PlayerId, PlayerMetadata, Suit } from '../game/types';
 import { BidPanel } from './BidPanel';
 import { GameMenu } from './GameMenu';
@@ -21,6 +25,7 @@ export interface GameTableProps {
   readonly onRestart?: () => void;
   readonly onHome?: () => void;
   readonly sounds?: SoundController;
+  readonly soundOptions?: SoundControllerOptions;
 }
 
 const SEAT_POSITIONS: Readonly<Record<PlayerId, SeatPosition>> = {
@@ -39,8 +44,9 @@ export function GameTable({
   onRestart = doNothing,
   onHome = doNothing,
   sounds,
+  soundOptions,
 }: GameTableProps) {
-  const browserSounds = useSounds();
+  const browserSounds = useSounds(soundOptions);
   const activeSounds = sounds ?? browserSounds;
   const previousAudioStateRef = useRef(audioSnapshot(state));
   const human = state.players.find((player) => player.id === 'human');

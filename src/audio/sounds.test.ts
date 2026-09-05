@@ -1,6 +1,13 @@
+import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { SOUND_KEY, createSoundController, type AudioContextLike } from './sounds';
+import { SAVE_KEY } from '../storage/save';
+import {
+  SOUND_KEY,
+  createSoundController,
+  useSounds,
+  type AudioContextLike,
+} from './sounds';
 
 class MemoryStorage {
   readonly values = new Map<string, string>();
@@ -17,6 +24,7 @@ class MemoryStorage {
 }
 
 function audioHarness() {
+  let currentState = 'suspended';
   const oscillators: Array<{
     frequency: { setValueAtTime: ReturnType<typeof vi.fn> };
     connect: ReturnType<typeof vi.fn>;
@@ -32,9 +40,22 @@ function audioHarness() {
   }> = [];
   const context: AudioContextLike = {
     currentTime: 12,
-    state: 'suspended',
+    get state() {
+      return currentState;
+    },
     destination: {},
-    resume: vi.fn().mockResolvedValue(undefined),
+    resume: vi.fn(() => {
+      currentState = 'running';
+      return Promise.resolve();
+    }),
+    suspend: vi.fn(() => {
+      currentState = 'suspended';
+      return Promise.resolve();
+    }),
+    close: vi.fn(() => {
+      currentState = 'closed';
+      return Promise.resolve();
+    }),
     createOscillator: vi.fn(() => {
       const oscillator = {
         frequency: { setValueAtTime: vi.fn() },
@@ -58,7 +79,14 @@ function audioHarness() {
     }),
   };
 
-  return { context, oscillators, gains };
+  return {
+    context,
+    oscillators,
+    gains,
+    setState(state: string) {
+      currentState = state;
+    },
+  };
 }
 
 describe('sound controller', () => {
@@ -91,13 +119,15 @@ describe('sound controller', () => {
 
   it('uses browser storage by default without touching the match save', () => {
     window.localStorage.removeItem(SOUND_KEY);
+    window.localStorage.setItem(SAVE_KEY, 'saved-match-sentinel');
     const sound = createSoundController({ createAudioContext: () => null });
 
     sound.toggle();
 
     expect(window.localStorage.getItem(SOUND_KEY)).toBe('true');
-    expect(window.localStorage.getItem('wizard-card-game/save-v1')).toBeNull();
+    expect(window.localStorage.getItem(SAVE_KEY)).toBe('saved-match-sentinel');
     window.localStorage.removeItem(SOUND_KEY);
+    window.localStorage.removeItem(SAVE_KEY);
   });
 
   it('never throws when storage reads or writes fail', () => {
@@ -194,14 +224,17 @@ describe('sound controller', () => {
     expect(storage.writes).toEqual([]);
   });
 
-  it('retries a rejected resume when the user later opts in again', async () => {
+  it('retries a rejected resume on a later play', async () => {
     const storage = new MemoryStorage();
     storage.values.set(SOUND_KEY, 'true');
     const harness = audioHarness();
-    const resume = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('gesture required'))
-      .mockResolvedValueOnce(undefined);
+    const resume = vi.fn(() => {
+      if (resume.mock.calls.length === 1) {
+        return Promise.reject(new Error('gesture required'));
+      }
+      harness.setState('running');
+      return Promise.resolve();
+    });
     harness.context.resume = resume;
     const sound = createSoundController({
       storage,
@@ -210,9 +243,105 @@ describe('sound controller', () => {
 
     sound.play('card');
     await Promise.resolve();
-    sound.toggle();
-    sound.toggle();
+    sound.play('card');
 
     expect(resume).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not throw when reading audio context state fails', () => {
+    const harness = audioHarness();
+    Object.defineProperty(harness.context, 'state', {
+      get() {
+        throw new Error('context disconnected');
+      },
+    });
+    const sound = createSoundController({
+      storage: new MemoryStorage(),
+      createAudioContext: () => harness.context,
+    });
+
+    expect(() => sound.toggle()).not.toThrow();
+    expect(() => sound.play('card')).not.toThrow();
+  });
+
+  it('resumes a reused suspended context before scheduling another cue', () => {
+    const harness = audioHarness();
+    const sound = createSoundController({
+      storage: new MemoryStorage(),
+      createAudioContext: () => harness.context,
+    });
+    sound.toggle();
+    harness.setState('suspended');
+
+    sound.play('trick');
+
+    expect(harness.context.resume).toHaveBeenCalledTimes(2);
+    expect(harness.context.createOscillator).toHaveBeenCalledOnce();
+  });
+
+  it('closes and resets its context when sound is disabled', () => {
+    const first = audioHarness();
+    const second = audioHarness();
+    const createAudioContext = vi
+      .fn<() => AudioContextLike | null>()
+      .mockReturnValueOnce(first.context)
+      .mockReturnValueOnce(second.context);
+    const sound = createSoundController({ storage: new MemoryStorage(), createAudioContext });
+    sound.toggle();
+
+    sound.toggle();
+
+    expect(first.context.close).toHaveBeenCalledOnce();
+    expect(first.context.suspend).not.toHaveBeenCalled();
+    sound.toggle();
+    expect(createAudioContext).toHaveBeenCalledTimes(2);
+  });
+
+  it('disposes its context without changing the persisted preference', () => {
+    const storage = new MemoryStorage();
+    const harness = audioHarness();
+    const sound = createSoundController({
+      storage,
+      createAudioContext: () => harness.context,
+    });
+    sound.toggle();
+    storage.writes.length = 0;
+
+    sound.dispose();
+    sound.dispose();
+
+    expect(harness.context.close).toHaveBeenCalledOnce();
+    expect(storage.writes).toEqual([]);
+  });
+
+  it('swallows close failures and remains safe to dispose again', async () => {
+    const harness = audioHarness();
+    harness.context.close = vi.fn().mockRejectedValue(new Error('close denied'));
+    const sound = createSoundController({
+      storage: new MemoryStorage(),
+      createAudioContext: () => harness.context,
+    });
+    sound.toggle();
+
+    expect(() => sound.dispose()).not.toThrow();
+    await Promise.resolve();
+    expect(() => sound.dispose()).not.toThrow();
+  });
+
+  it('disposes the active context when the sound hook unmounts', () => {
+    const harness = audioHarness();
+    const { result, unmount } = renderHook(() =>
+      useSounds({
+        storage: new MemoryStorage(),
+        createAudioContext: () => harness.context,
+      }),
+    );
+    act(() => {
+      result.current.toggle();
+    });
+
+    unmount();
+
+    expect(harness.context.close).toHaveBeenCalledOnce();
   });
 });

@@ -12,6 +12,7 @@ export interface HomeScreenProps {
 
 const HARD_MODE_DESCRIPTION_ID = 'hard-mode-description';
 const NEW_GAME_DIALOG_TITLE_ID = 'new-game-dialog-title';
+const NEW_GAME_DIALOG_DESCRIPTION_ID = 'new-game-dialog-description';
 
 export function HomeScreen({
   hasSavedGame,
@@ -72,12 +73,13 @@ export function HomeScreen({
       <AccessibleDialog
         open={openDialog === 'new-game'}
         titleId={NEW_GAME_DIALOG_TITLE_ID}
+        descriptionId={NEW_GAME_DIALOG_DESCRIPTION_ID}
         onClose={() => setOpenDialog(null)}
         initialFocusRef={cancelButtonRef}
         returnFocusRef={easyButtonRef}
       >
         <h2 id={NEW_GAME_DIALOG_TITLE_ID}>Start a new game?</h2>
-        <p>Your saved match will be replaced.</p>
+        <p id={NEW_GAME_DIALOG_DESCRIPTION_ID}>Your saved match will be replaced.</p>
         <button type="button" onClick={confirmNewGame}>
           Start New Game
         </button>

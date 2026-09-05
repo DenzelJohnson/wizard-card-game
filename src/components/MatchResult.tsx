@@ -21,7 +21,22 @@ export function MatchResult({ state, onNewMatch, onHome }: MatchResultProps) {
   const winningScore = winnerIds[0] === undefined ? 0 : state.scores[winnerIds[0]];
   const standings = state.players
     .map((player, seatIndex) => ({ player, seatIndex, score: state.scores[player.id] }))
-    .sort((left, right) => right.score - left.score || left.seatIndex - right.seatIndex);
+    .sort((left, right) => right.score - left.score || left.seatIndex - right.seatIndex)
+    .map((standing, index, ordered) => ({
+      ...standing,
+      rank: index > 0 && standing.score === ordered[index - 1]?.score ? undefined : index + 1,
+    }))
+    .reduce<Array<{ player: (typeof state.players)[number]; score: number; rank: number }>>(
+      (ranked, standing) => [
+        ...ranked,
+        {
+          player: standing.player,
+          score: standing.score,
+          rank: standing.rank ?? ranked.at(-1)?.rank ?? 1,
+        },
+      ],
+      [],
+    );
 
   return (
     <section className="match-result" aria-labelledby="match-result-title">
@@ -32,9 +47,9 @@ export function MatchResult({ state, onNewMatch, onHome }: MatchResultProps) {
           : `${joinNames(winners)} share the win with ${formatNumber(winningScore)} points!`}
       </p>
       <ol aria-label="Final standings">
-        {standings.map(({ player, score }, index) => (
-          <li key={player.id}>
-            {index + 1}. {player.name} — {formatNumber(score)}
+        {standings.map(({ player, score, rank }) => (
+          <li key={player.id} value={rank}>
+            {player.name} — {formatNumber(score)}
           </li>
         ))}
       </ol>

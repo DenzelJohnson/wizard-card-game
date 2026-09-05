@@ -48,15 +48,15 @@ export function GameMenu({
 
   return (
     <>
-      <div className="game-menu" role="toolbar" aria-label="Game menu">
+      <div className="game-menu" role="group" aria-label="Game menu">
         <button ref={scoreSheetButtonRef} type="button" onClick={() => setOpenPanel('scores')}>
           Score Sheet
         </button>
         <button ref={rulesButtonRef} type="button" onClick={() => setOpenPanel('rules')}>
           Rules
         </button>
-        <button type="button" aria-pressed={soundEnabled} onClick={onToggleSound}>
-          Sound {soundEnabled ? 'On' : 'Off'}
+        <button type="button" aria-label="Sound" aria-pressed={soundEnabled} onClick={onToggleSound}>
+          Sound <span aria-hidden="true">{soundEnabled ? 'On' : 'Off'}</span>
         </button>
         <button ref={restartButtonRef} type="button" onClick={requestRestart}>
           Restart
@@ -81,12 +81,15 @@ export function GameMenu({
       <AccessibleDialog
         open={openPanel === 'restart'}
         titleId="restart-match-title"
+        descriptionId="restart-match-description"
         onClose={() => setOpenPanel(null)}
         initialFocusRef={cancelButtonRef}
         returnFocusRef={restartButtonRef}
       >
         <h2 id="restart-match-title">Restart match?</h2>
-        <p>Your current unfinished match will be lost and replaced with a new match.</p>
+        <p id="restart-match-description">
+          Your current unfinished match will be lost and replaced with a new match.
+        </p>
         <button
           type="button"
           onClick={() => {
@@ -103,12 +106,15 @@ export function GameMenu({
       <AccessibleDialog
         open={openPanel === 'home'}
         titleId="return-home-title"
+        descriptionId="return-home-description"
         onClose={() => setOpenPanel(null)}
         initialFocusRef={cancelButtonRef}
         returnFocusRef={homeButtonRef}
       >
         <h2 id="return-home-title">Return home?</h2>
-        <p>Your unfinished match will be abandoned and its saved progress removed.</p>
+        <p id="return-home-description">
+          Your unfinished match will be abandoned and its saved progress removed.
+        </p>
         <button
           type="button"
           onClick={() => {

@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createMatch, legalActions, reduceGame } from '../game/state';
 import type { Card, GameAction, GameState } from '../game/types';
 import { isSemanticallyValidGameState } from '../game/validation';
-import type { SoundController } from '../audio/sounds';
+import type { AudioContextLike, SoundController } from '../audio/sounds';
 import { GameTable } from './GameTable';
 import { cardName } from './PlayingCard';
 
@@ -373,7 +374,8 @@ describe('GameTable', () => {
       />,
     );
 
-    expect(screen.getByRole('toolbar', { name: 'Game menu' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Game menu' })).toBeInTheDocument();
+    expect(screen.queryByRole('toolbar', { name: 'Game menu' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Round 3 complete' })).toBeInTheDocument();
     expect(screen.getByRole('listitem', { name: 'You' })).toHaveTextContent(
       '20 + (10 × 2) = +40',
@@ -414,6 +416,7 @@ describe('GameTable', () => {
       enabled: true,
       toggle: vi.fn(() => false),
       play,
+      dispose: vi.fn(),
     };
     const initial = restrictedFollowSuitState('ember');
     const props = {
@@ -468,6 +471,7 @@ describe('GameTable', () => {
       enabled: true,
       toggle: vi.fn(() => false),
       play: vi.fn(),
+      dispose: vi.fn(),
     };
     const state = scoredState();
     render(
@@ -483,5 +487,70 @@ describe('GameTable', () => {
     );
 
     expect(sounds.play).not.toHaveBeenCalled();
+  });
+
+  it('does not duplicate transition audio in StrictMode and closes its context on unmount', () => {
+    let contextState = 'running';
+    const close = vi.fn(() => {
+      contextState = 'closed';
+      return Promise.resolve();
+    });
+    const createOscillator = vi.fn(() => ({
+      frequency: { setValueAtTime: vi.fn() },
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    }));
+    const context: AudioContextLike = {
+      currentTime: 1,
+      get state() {
+        return contextState;
+      },
+      destination: {},
+      resume: vi.fn().mockResolvedValue(undefined),
+      close,
+      createOscillator,
+      createGain: vi.fn(() => ({
+        gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+        connect: vi.fn(),
+      })),
+    };
+    const createAudioContext = vi.fn(() => context);
+    const storage = {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+    };
+    const initial = restrictedFollowSuitState('ember');
+    const table = (state: GameState) => (
+      <StrictMode>
+        <GameTable
+          state={state}
+          legalActions={legalActions(state)}
+          onAction={vi.fn()}
+          onContinueRound={vi.fn()}
+          onRestart={vi.fn()}
+          onHome={vi.fn()}
+          soundOptions={{ storage, createAudioContext }}
+        />
+      </StrictMode>
+    );
+    const { rerender, unmount } = render(table(initial));
+    fireEvent.click(screen.getByRole('button', { name: 'Sound' }));
+    expect(createAudioContext).toHaveBeenCalledOnce();
+
+    const onePlay: GameState = {
+      ...initial,
+      currentTrick: [
+        {
+          playerId: 'ember',
+          card: { id: 'strict-play', kind: 'suited', suit: 'clubs', rank: 4 },
+        },
+      ],
+    };
+    rerender(table(onePlay));
+    expect(createOscillator).toHaveBeenCalledOnce();
+
+    unmount();
+    expect(close).toHaveBeenCalledOnce();
   });
 });
