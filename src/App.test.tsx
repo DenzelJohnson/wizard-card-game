@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useWizardGame, type WizardGameController } from './app/useWizardGame';
 import { App } from './App';
-import { createMatch } from './game/state';
+import { createMatch, legalActions } from './game/state';
 
 vi.mock('./app/useWizardGame', () => ({
   useWizardGame: vi.fn(),
@@ -35,11 +35,25 @@ describe('App', () => {
   });
 
   it('shows the Wizard home screen from the controller', () => {
-    useWizardGameMock.mockReturnValue(controller());
+    const startGame = vi.fn();
+    useWizardGameMock.mockReturnValue(controller({ startGame }));
     render(<App />);
 
     expect(screen.getByRole('heading', { name: 'Wizard' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Easy' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
+    expect(startGame).toHaveBeenCalledOnce();
+  });
+
+  it('routes Continue Game to the controller', () => {
+    const continueGame = vi.fn();
+    useWizardGameMock.mockReturnValue(
+      controller({ hasSavedGame: true, continueGame }),
+    );
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue Game' }));
+
+    expect(continueGame).toHaveBeenCalledOnce();
   });
 
   it('shows the game table when the controller has an active game', () => {
@@ -60,6 +74,34 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByText(/this match can continue, but resume may be unavailable/i)).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('main')).getByText(
+        /this match can continue, but resume may be unavailable/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('routes a human table decision to the controller', () => {
+    const state = {
+      ...createMatch(42),
+      phase: 'bidding' as const,
+      round: 1,
+      dealerId: 'mira' as const,
+      activePlayerId: 'human' as const,
+    };
+    const actions = legalActions(state);
+    const dispatchHuman = vi.fn();
+    useWizardGameMock.mockReturnValue(
+      controller({ screen: 'game', state, legalActions: actions, dispatchHuman }),
+    );
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Bid 1' }));
+
+    expect(dispatchHuman).toHaveBeenCalledWith({
+      type: 'PLACE_BID',
+      playerId: 'human',
+      bid: 1,
+    });
   });
 });

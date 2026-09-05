@@ -2,6 +2,7 @@ import type { Card, GameAction, GameState, PlayerId, PlayerMetadata, Suit } from
 import { BidPanel } from './BidPanel';
 import { PlayerSeat, type SeatPosition } from './PlayerSeat';
 import { cardName, PlayingCard, suitName, suitSymbol } from './PlayingCard';
+import { StorageWarning } from './StorageWarning';
 import { TrickArea } from './TrickArea';
 import { TrumpPanel } from './TrumpPanel';
 
@@ -9,6 +10,7 @@ export interface GameTableProps {
   readonly state: GameState;
   readonly legalActions: readonly GameAction[];
   readonly onAction: (action: GameAction) => void;
+  readonly storageWarning?: boolean;
 }
 
 const SEAT_POSITIONS: Readonly<Record<PlayerId, SeatPosition>> = {
@@ -18,9 +20,16 @@ const SEAT_POSITIONS: Readonly<Record<PlayerId, SeatPosition>> = {
   mira: 'right',
 };
 
-export function GameTable({ state, legalActions, onAction }: GameTableProps) {
+export function GameTable({
+  state,
+  legalActions,
+  onAction,
+  storageWarning = false,
+}: GameTableProps) {
   const human = state.players.find((player) => player.id === 'human');
   const opponents = state.players.filter((player) => player.id !== 'human');
+  const activeDecisionPlayerId = isDecisionPhase(state.phase) ? state.activePlayerId : null;
+  const trickWinnerId = state.phase === 'trick-result' ? state.activePlayerId : null;
   const leaderId =
     state.currentTrick[0]?.playerId ??
     (state.phase === 'playing' && state.currentTrick.length === 0 ? state.activePlayerId : null);
@@ -41,17 +50,20 @@ export function GameTable({ state, legalActions, onAction }: GameTableProps) {
         <p role="status" aria-live="polite">
           {phasePrompt(state)}
         </p>
+        {storageWarning ? <StorageWarning /> : null}
         <TrumpDisplay state={state} />
       </header>
 
       <TrickArea plays={state.currentTrick} players={state.players} />
 
-      <section className="decision-area" aria-label="Your decision">
-        {bidActions.length > 0 ? <BidPanel actions={bidActions} onAction={onAction} /> : null}
-        {trumpActions.length > 0 ? (
-          <TrumpPanel actions={trumpActions} onAction={onAction} />
-        ) : null}
-      </section>
+      {bidActions.length > 0 || trumpActions.length > 0 ? (
+        <section className="decision-area" aria-label="Your decision">
+          {bidActions.length > 0 ? <BidPanel actions={bidActions} onAction={onAction} /> : null}
+          {trumpActions.length > 0 ? (
+            <TrumpPanel actions={trumpActions} onAction={onAction} />
+          ) : null}
+        </section>
+      ) : null}
 
       {human ? (
         <section className="human-area" aria-label="Your hand and seat">
@@ -62,10 +74,17 @@ export function GameTable({ state, legalActions, onAction }: GameTableProps) {
             bid={bidFor(state, 'human')}
             tricksWon={state.tricksWon.human}
             dealer={state.dealerId === 'human'}
-            active={state.activePlayerId === 'human'}
+            active={activeDecisionPlayerId === 'human'}
             leader={leaderId === 'human'}
+            winner={trickWinnerId === 'human'}
           />
-          <div className="human-hand" aria-label={`Your hand, ${state.hands.human.length} cards`}>
+          <div
+            className="human-hand"
+            role="group"
+            aria-label={`Your hand, ${state.hands.human.length} ${
+              state.hands.human.length === 1 ? 'card' : 'cards'
+            }`}
+          >
             {state.hands.human.map((card) => {
               const action = humanPlayAction(card, state, legalActions);
               const canPlayNow = state.phase === 'playing' && state.activePlayerId === 'human';
@@ -94,7 +113,9 @@ export function GameTable({ state, legalActions, onAction }: GameTableProps) {
             key={player.id}
             player={player}
             state={state}
+            activeDecisionPlayerId={activeDecisionPlayerId}
             leaderId={leaderId}
+            trickWinnerId={trickWinnerId}
             hiddenCardCount={state.hands[player.id].length}
           />
         ))}
@@ -106,12 +127,16 @@ export function GameTable({ state, legalActions, onAction }: GameTableProps) {
 function Seat({
   player,
   state,
+  activeDecisionPlayerId,
   leaderId,
+  trickWinnerId,
   hiddenCardCount,
 }: {
   readonly player: PlayerMetadata;
   readonly state: GameState;
+  readonly activeDecisionPlayerId: PlayerId | null;
   readonly leaderId: PlayerId | null;
+  readonly trickWinnerId: PlayerId | null;
   readonly hiddenCardCount: number;
 }) {
   return (
@@ -122,8 +147,9 @@ function Seat({
       bid={bidFor(state, player.id)}
       tricksWon={state.tricksWon[player.id]}
       dealer={state.dealerId === player.id}
-      active={state.activePlayerId === player.id}
+      active={activeDecisionPlayerId === player.id}
       leader={leaderId === player.id}
+      winner={trickWinnerId === player.id}
       hiddenCardCount={hiddenCardCount}
     />
   );
@@ -182,12 +208,16 @@ function phasePrompt(state: GameState): string {
           : 'Play a card.'
         : `${activeName ?? 'Computer'} is playing…`;
     case 'trick-result':
-      return 'Resolving trick…';
+      return `${activeName ?? 'A player'} won the trick.`;
     case 'round-result':
       return `Round ${state.round} complete.`;
     case 'match-result':
       return 'Match complete.';
   }
+}
+
+function isDecisionPhase(phase: GameState['phase']): boolean {
+  return phase === 'choose-trump' || phase === 'bidding' || phase === 'playing';
 }
 
 function bidFor(state: GameState, playerId: PlayerId): number | undefined {

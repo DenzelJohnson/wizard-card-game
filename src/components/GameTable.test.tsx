@@ -2,8 +2,10 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createMatch, legalActions, reduceGame } from '../game/state';
-import type { Card, GameState } from '../game/types';
+import type { Card, GameAction, GameState } from '../game/types';
+import { isSemanticallyValidGameState } from '../game/validation';
 import { GameTable } from './GameTable';
+import { cardName } from './PlayingCard';
 
 const twoHearts: Card = { id: 'human-heart-2', kind: 'suited', suit: 'hearts', rank: 2 };
 const aceSpades: Card = { id: 'human-spade-ace', kind: 'suited', suit: 'spades', rank: 14 };
@@ -89,6 +91,32 @@ function restrictedFollowSuitState(activePlayerId: GameState['activePlayerId'] =
   });
 }
 
+function resolvedNonLeaderWinState(): GameState {
+  for (let seed = 0; seed < 20_000; seed += 1) {
+    let state = createMatch(seed);
+
+    for (let transition = 0; transition < 12 && state.phase !== 'trick-result'; transition += 1) {
+      const action = legalActions(state)[0] as GameAction | undefined;
+      if (action === undefined) {
+        break;
+      }
+      state = reduceGame(state, action);
+    }
+
+    if (
+      state.phase === 'trick-result' &&
+      state.currentTrick[0]?.playerId === 'human' &&
+      state.currentTrick[0].card.kind === 'suited' &&
+      state.activePlayerId === 'rowan' &&
+      state.currentTrick.find((play) => play.playerId === 'rowan')?.card.kind === 'wizard'
+    ) {
+      return state;
+    }
+  }
+
+  throw new Error('Unable to find a valid non-leader trick-win fixture.');
+}
+
 describe('GameTable', () => {
   it('shows all seats and opponent counts without leaking hidden faces or IDs', () => {
     const state = displayState();
@@ -103,6 +131,7 @@ describe('GameTable', () => {
     expect(screen.getByLabelText('Rowan has 2 hidden cards')).toBeInTheDocument();
     expect(screen.getByLabelText('Mira has 1 hidden card')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Ace of Hearts/ })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Your hand, 1 card' })).toBeInTheDocument();
 
     expect(container.innerHTML).not.toMatch(/secret-/i);
     expect(container.innerHTML).not.toMatch(/King of Clubs/i);
@@ -136,6 +165,7 @@ describe('GameTable', () => {
     const onAction = vi.fn();
     render(<GameTable state={state} legalActions={actions} onAction={onAction} />);
 
+    expect(screen.getByRole('region', { name: 'Your decision' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^Bid \d+$/ }).map((button) => button.textContent)).toEqual([
       'Bid 0',
       'Bid 1',
@@ -264,32 +294,45 @@ describe('GameTable', () => {
     expect(onAction).not.toHaveBeenCalled();
     expect(screen.getByRole('status')).toHaveTextContent('Ember is playing…');
     expect(within(screen.getByRole('region', { name: 'Ember seat' })).getByText('Leader')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Your decision' })).not.toBeInTheDocument();
   });
 
-  it('renders trick plays in order with player names, accessible card names, and leader text', () => {
-    const state = displayState({
-      phase: 'trick-result',
-      activePlayerId: 'rowan',
-      currentTrick: [
-        { playerId: 'rowan', card: { id: 'played-jester', kind: 'jester' } },
-        {
-          playerId: 'mira',
-          card: { id: 'played-club-king', kind: 'suited', suit: 'clubs', rank: 13 },
-        },
-        { playerId: 'human', card: { id: 'played-wizard', kind: 'wizard' } },
-      ],
-    });
+  it('distinguishes the trick leader from a non-leader winner in a resolved engine state', () => {
+    const state = resolvedNonLeaderWinState();
     render(<GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />);
 
+    expect(state.phase).toBe('trick-result');
+    expect(isSemanticallyValidGameState(state)).toBe(true);
+    expect(state.currentTrick[0]?.playerId).toBe('human');
+    expect(state.activePlayerId).toBe('rowan');
     const plays = screen.getAllByRole('listitem');
-    expect(plays).toHaveLength(3);
-    expect(within(plays[0]).getByText('Rowan')).toBeInTheDocument();
-    expect(within(plays[0]).getByLabelText('Jester')).toBeInTheDocument();
-    expect(within(plays[1]).getByText('Mira')).toBeInTheDocument();
-    expect(within(plays[1]).getByLabelText('King of Clubs')).toBeInTheDocument();
-    expect(within(plays[2]).getByText('You')).toBeInTheDocument();
-    expect(within(plays[2]).getByLabelText('Wizard')).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'Rowan seat' })).getByText('Leader')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Resolving trick…');
+    expect(plays).toHaveLength(4);
+    for (const [index, play] of state.currentTrick.entries()) {
+      const playerName = state.players.find((player) => player.id === play.playerId)?.name;
+      expect(within(plays[index]).getByText(playerName as string)).toBeInTheDocument();
+      expect(within(plays[index]).getByLabelText(cardName(play.card))).toBeInTheDocument();
+    }
+    expect(within(screen.getByRole('region', { name: 'You seat' })).getByText('Leader')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Rowan seat' })).getByText('Winner')).toBeInTheDocument();
+    expect(screen.queryByText('Active')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Rowan won the trick.');
+  });
+
+  it('renders a gameplay storage warning within the game table main landmark', () => {
+    const state = displayState();
+    render(
+      <GameTable
+        state={state}
+        legalActions={legalActions(state)}
+        onAction={vi.fn()}
+        storageWarning
+      />,
+    );
+
+    expect(
+      within(screen.getByRole('main')).getByText(
+        /this match can continue, but resume may be unavailable/i,
+      ),
+    ).toBeInTheDocument();
   });
 });

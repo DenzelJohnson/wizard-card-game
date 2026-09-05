@@ -11,6 +11,7 @@ export interface PlayerSeatProps {
   readonly dealer: boolean;
   readonly active: boolean;
   readonly leader: boolean;
+  readonly winner: boolean;
   readonly hiddenCardCount?: number;
 }
 
@@ -23,6 +24,7 @@ export function PlayerSeat({
   dealer,
   active,
   leader,
+  winner,
   hiddenCardCount,
 }: PlayerSeatProps) {
   return (
@@ -37,11 +39,12 @@ export function PlayerSeat({
         <span>Bid: {bid ?? '—'}</span>{' '}
         <span>Tricks: {tricksWon}</span>
       </p>
-      {dealer || active || leader ? (
+      {dealer || active || leader || winner ? (
         <p className="seat-markers">
           {dealer ? <span>Dealer</span> : null}
           {active ? <span>Active</span> : null}
           {leader ? <span>Leader</span> : null}
+          {winner ? <span>Winner</span> : null}
         </p>
       ) : null}
       {hiddenCardCount !== undefined ? (

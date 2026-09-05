@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { StorageWarning } from './StorageWarning';
 
 export interface HomeScreenProps {
   readonly hasSavedGame: boolean;
@@ -129,14 +130,5 @@ export function HomeScreen({
         </div>
       ) : null}
     </main>
-  );
-}
-
-export function StorageWarning() {
-  return (
-    <p role="status" className="storage-notice">
-      This match can continue, but resume may be unavailable because browser storage could not be
-      accessed.
-    </p>
   );
 }
