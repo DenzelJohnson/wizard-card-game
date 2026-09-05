@@ -142,6 +142,23 @@ function scoredState(phase: 'round-result' | 'match-result' = 'round-result'): G
 }
 
 describe('GameTable', () => {
+  it('exposes only non-sensitive game state and legal visible-card browser hooks', () => {
+    const state = restrictedFollowSuitState();
+    const { container } = render(
+      <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
+    );
+
+    const gameState = screen.getByTestId('game-state');
+    expect(gameState).toHaveAttribute('data-phase', 'playing');
+    expect(gameState).toHaveAttribute('data-round', '4');
+    expect(gameState).toHaveAttribute('data-active-player', 'human');
+    expect(screen.getAllByTestId('legal-card')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: /Ace of Spades/ })).not.toHaveAttribute(
+      'data-testid',
+    );
+    expect(container.innerHTML).not.toMatch(/secret-/i);
+  });
+
   it('shows all seats and opponent counts without leaking hidden faces or IDs', () => {
     const state = displayState();
     const { container } = render(

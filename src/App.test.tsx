@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useWizardGame, type WizardGameController } from './app/useWizardGame';
-import { App } from './App';
+import { App, developmentSeedForSearch } from './App';
 import { createMatch, legalActions } from './game/state';
 
 vi.mock('./app/useWizardGame', () => ({
@@ -32,6 +32,7 @@ function controller(
 describe('App', () => {
   beforeEach(() => {
     useWizardGameMock.mockReset();
+    window.history.replaceState({}, '', '/');
   });
 
   it('shows the Wizard home screen from the controller', () => {
@@ -42,6 +43,46 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Wizard' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
     expect(startGame).toHaveBeenCalledOnce();
+  });
+
+  it('passes a valid development URL seed to a new Easy match', () => {
+    const startGame = vi.fn();
+    window.history.replaceState({}, '', '/?seed=42');
+    useWizardGameMock.mockReturnValue(controller({ startGame }));
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
+
+    expect(startGame).toHaveBeenCalledWith(42);
+  });
+
+  it('accepts a signed safe integer development seed', () => {
+    const startGame = vi.fn();
+    window.history.replaceState({}, '', '/?seed=-1');
+    useWizardGameMock.mockReturnValue(controller({ startGame }));
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
+
+    expect(startGame).toHaveBeenCalledWith(-1);
+  });
+
+  it.each(['', '4.2', '12cards', '9007199254740992', '-9007199254740992'])(
+    'falls back to the normal seed for invalid development query %j',
+    (seed) => {
+      const startGame = vi.fn();
+      window.history.replaceState({}, '', `/?seed=${seed}`);
+      useWizardGameMock.mockReturnValue(controller({ startGame }));
+      render(<App />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
+
+      expect(startGame).toHaveBeenCalledWith(undefined);
+    },
+  );
+
+  it('ignores even a valid URL seed when development entry is disabled', () => {
+    expect(developmentSeedForSearch('?seed=42', false)).toBeUndefined();
   });
 
   it('routes Continue Game to the controller', () => {

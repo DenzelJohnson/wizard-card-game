@@ -92,6 +92,10 @@ export function GameTable({
       <main
         className="game-table game-table--result-screen"
         aria-labelledby="round-summary-title"
+        data-testid="game-state"
+        data-phase={state.phase}
+        data-round={state.round}
+        data-active-player={state.activePlayerId ?? 'none'}
       >
         {storageWarning ? <StorageWarning /> : null}
         <RoundSummary state={state} onContinue={onContinueRound} />
@@ -111,6 +115,10 @@ export function GameTable({
       <main
         className="game-table game-table--result-screen"
         aria-labelledby="match-result-title"
+        data-testid="game-state"
+        data-phase={state.phase}
+        data-round={state.round}
+        data-active-player={state.activePlayerId ?? 'none'}
       >
         {storageWarning ? <StorageWarning /> : null}
         <MatchResult state={state} onNewMatch={onRestart} onHome={onHome} />
@@ -119,7 +127,14 @@ export function GameTable({
   }
 
   return (
-    <main className="game-table" aria-labelledby="game-table-heading">
+    <main
+      className="game-table"
+      aria-labelledby="game-table-heading"
+      data-testid="game-state"
+      data-phase={state.phase}
+      data-round={state.round}
+      data-active-player={state.activePlayerId ?? 'none'}
+    >
       <header className="table-status">
         <h1 id="game-table-heading" className="sr-only">Wizard game table</h1>
         <p className="table-status__round">Round {state.round} of 15</p>

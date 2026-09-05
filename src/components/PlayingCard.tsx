@@ -98,6 +98,7 @@ export function PlayingCard({
         data-card-id={card.id}
         data-kind={card.kind}
         data-suit={suit}
+        data-testid={playable ? 'legal-card' : undefined}
         disabled={!playable}
         aria-label={playable ? `Play ${name}` : `${name} — ${disabledReason}`}
         onClick={playable ? onPlay : undefined}
