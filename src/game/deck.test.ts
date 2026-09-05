@@ -14,12 +14,18 @@ describe('Wizard deck', () => {
   it('shuffles repeatably from the same seed without mutating the deck', () => {
     const deck = createDeck();
     const originalIds = deck.map((card) => card.id);
-    const first = shuffle(deck, createRng(42));
+    const rng = createRng(42);
+    const first = shuffle(deck, rng);
     const second = shuffle(deck, createRng(42));
 
+    expect(first.cards).toHaveLength(60);
     expect(first.cards.map((card) => card.id)).toEqual(second.cards.map((card) => card.id));
+    expect(first.cards.map((card) => card.id).sort()).toEqual([...originalIds].sort());
     expect(deck.map((card) => card.id)).toEqual(originalIds);
     expect(first.cards).not.toBe(deck);
+    expect(first.rng).not.toEqual(rng);
+    expect(first.rng).toEqual({ value: 688200609 });
+    expect(rng).toEqual(createRng(42));
   });
 });
 
