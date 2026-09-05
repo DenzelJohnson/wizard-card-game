@@ -62,7 +62,7 @@ No third-party runtime API, analytics, database, or paid service is in scope.
 
 | Automation | Trigger / schedule | Reads | Writes | Assumptions it makes |
 |------------|--------------------|-------|--------|----------------------|
-| GitHub Pages deployment (`.github/workflows/deploy.yml`) | Push to `main` and manual dispatch | Repository source, npm lockfile, unit/build scripts, Playwright Chromium suite, and Vite production output | Uploaded `dist/` Pages artifact and `github-pages` environment deployment | Node 24 and npm scripts match project configuration; `npm run check` produces the production build; Vite base path matches the repository name |
+| GitHub Pages deployment (`.github/workflows/deploy.yml`) | Push to `main` and manual dispatch | Repository source, npm lockfile, unit/build scripts, Playwright Chromium suite, and Vite production output | Uploaded `dist/` Pages artifact and `github-pages` environment deployment | Node 24 and npm scripts match project configuration; `npm run check` produces the production build; Vite base path matches the repository name; action dependencies stay pinned to reviewed immutable commits |
 
 No other scheduled, local, or external automation is part of this project.
 
@@ -86,7 +86,7 @@ No other scheduled, local, or external automation is part of this project.
 - Playwright configuration -> `PLAYWRIGHT_BASE_URL` selects an already-running server without starting one; when absent, Playwright starts Vite on a documented strict loopback port with strict-port binding; desktop and mobile Chromium projects consume the same public UI while isolated contexts clear `localStorage`, capture failure diagnostics, and write manual-review screenshots under ignored test output
 - Vite base path -> produced by Vite configuration; consumed by production asset routing on GitHub Pages
 - Vitest setup -> produced by test configuration; consumed by component tests for DOM cleanup and matcher extensions
-- Deployment workflow -> `.github/workflows/deploy.yml` runs on `main` pushes or manual dispatch, installs the npm lockfile with Node 24, runs `npm run check`, installs Playwright Chromium system/browser dependencies, runs `npm run test:e2e`, verifies the resulting `dist/index.html`, uploads `dist/`, and deploys it through the protected `github-pages` environment; GitHub Pages consumes that artifact, while Vite's production base path makes its asset URLs valid at `/wizard-card-game/`
+- Deployment workflow -> `.github/workflows/deploy.yml` runs on `main` pushes or manual dispatch, pins every third-party action to a reviewed full commit SHA, and gives the build job only `contents: read` while the deploy job alone receives `pages: write` and `id-token: write`; it installs the npm lockfile with Node 24, runs `npm run check`, installs Playwright Chromium system/browser dependencies, runs `npm run test:e2e`, verifies the resulting `dist/index.html`, uploads `dist/`, and deploys it through the protected `github-pages` environment; GitHub Pages consumes that artifact, while Vite's production base path makes its asset URLs valid at `/wizard-card-game/`
 
 ## 9. Known Fragilities / UNVERIFIED
 
