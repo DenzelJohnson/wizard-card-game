@@ -282,6 +282,24 @@ test('keeps the critical mobile flow contained with usable controls at 390px and
   await expectNoDocumentOverflow(page);
   await expectMinimumControlSize(page);
   await expectContained(page.locator('.round-summary'));
+
+  const firstRoundResult = await readGameSnapshot(page);
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await waitForGameChange(page, firstRoundResult.signature);
+  const activeAt320 = await reachHumanPlayingRound(page, 8);
+  const handAt320 = page.locator('.human-hand');
+  await expectNoDocumentOverflow(page);
+  await expectMinimumControlSize(page);
+  await expectContained(page.locator('.game-table'));
+  await expectContained(handAt320);
+  await expectHorizontallyScrollable(handAt320);
+  for (const seatName of ['You', 'Ember', 'Rowan', 'Mira']) {
+    await expectContained(page.getByRole('region', { name: `${seatName} seat` }));
+  }
+
+  await page.getByTestId('legal-card').first().click();
+  await waitForGameChange(page, activeAt320.signature);
+
   await page.goto(SEED_PATH);
   await expect(page.getByRole('heading', { name: 'Wizard' })).toBeVisible();
   await expectNoDocumentOverflow(page);
@@ -451,6 +469,29 @@ async function driveUntilPhase(page: Page, targetPhase: string): Promise<GameSna
   throw new Error(`The game did not reach ${targetPhase} within the transition cap.`);
 }
 
+async function reachHumanPlayingRound(page: Page, minimumRound: number): Promise<GameSnapshot> {
+  for (let transition = 0; transition < MAX_GAME_TRANSITIONS; transition += 1) {
+    const snapshot = await readGameSnapshot(page);
+    if (
+      snapshot.round >= minimumRound &&
+      snapshot.phase === 'playing' &&
+      snapshot.activePlayer === 'human'
+    ) {
+      return snapshot;
+    }
+    if (snapshot.phase === 'round-result') {
+      await page.getByRole('button', { name: 'Continue', exact: true }).click();
+      await waitForGameChange(page, snapshot.signature);
+    } else if (isHumanDecision(snapshot)) {
+      await chooseFirstHumanAction(page, snapshot);
+    } else {
+      await waitForGameChange(page, snapshot.signature);
+    }
+  }
+
+  throw new Error(`The game did not reach a human playing turn at round ${minimumRound} or later.`);
+}
+
 async function expectNativeModal(dialog: Locator): Promise<void> {
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveJSProperty('open', true);
@@ -491,6 +532,21 @@ async function expectContained(locator: Locator): Promise<void> {
   const viewportWidth = await locator.page().evaluate(() => document.documentElement.clientWidth);
   expect(box.x).toBeGreaterThanOrEqual(-0.5);
   expect(box.x + box.width).toBeLessThanOrEqual(viewportWidth + 0.5);
+}
+
+async function expectHorizontallyScrollable(locator: Locator): Promise<void> {
+  const dimensions = await locator.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    overflowX: getComputedStyle(element).overflowX,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(dimensions.overflowX).toBe('auto');
+  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
+
+  await locator.evaluate((element) => {
+    element.scrollLeft = element.scrollWidth;
+  });
+  await expect.poll(() => locator.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
 }
 
 function cssDurationMilliseconds(duration: string): number {
