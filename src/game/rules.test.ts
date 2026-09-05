@@ -24,13 +24,27 @@ describe('legalCards', () => {
   ];
 
   it('allows every card when the trick is empty', () => {
-    expect(cardIds(legalCards(hand, []))).toEqual(cardIds(hand));
+    const plays: Play[] = [];
+    const originalHand = [...hand];
+    const originalPlays = [...plays];
+    const legal = legalCards(hand, plays);
+
+    expect(cardIds(legal)).toEqual(cardIds(hand));
+    expect(legal).not.toBe(hand);
+    expect(hand).toEqual(originalHand);
+    expect(plays).toEqual(originalPlays);
   });
 
   it('requires led-suit cards while still allowing Wizards and Jesters', () => {
     const plays = [play(suited('hearts-12', 'hearts', 12))];
+    const originalHand = [...hand];
+    const originalPlays = [...plays];
+    const legal = legalCards(hand, plays);
 
-    expect(cardIds(legalCards(hand, plays))).toEqual(['hearts-2', 'hearts-9', 'wizard-1', 'jester-1']);
+    expect(cardIds(legal)).toEqual(['hearts-2', 'hearts-9', 'wizard-1', 'jester-1']);
+    expect(legal).not.toBe(hand);
+    expect(hand).toEqual(originalHand);
+    expect(plays).toEqual(originalPlays);
   });
 
   it('allows every card when the player is void in the led suit', () => {
@@ -98,6 +112,28 @@ describe('winningPlay', () => {
     ];
 
     expect(winningPlay(plays, 'spades').card.id).toBe('hearts-14');
+  });
+
+  it('selects the highest established led suit after a leading Jester', () => {
+    const plays = [
+      play(jester('jester-1')),
+      play(suited('hearts-9', 'hearts', 9), 1),
+      play(suited('hearts-14', 'hearts', 14), 2),
+      play(suited('clubs-14', 'clubs', 14), 3),
+    ];
+
+    expect(winningPlay(plays, 'spades').card.id).toBe('hearts-14');
+  });
+
+  it('does not let an off-suit high card win when trump is null', () => {
+    const plays = [
+      play(suited('hearts-9', 'hearts', 9)),
+      play(suited('spades-14', 'spades', 14), 1),
+      play(suited('hearts-12', 'hearts', 12), 2),
+      play(suited('clubs-14', 'clubs', 14), 3),
+    ];
+
+    expect(winningPlay(plays, null).card.id).toBe('hearts-12');
   });
 
   it('selects the first Jester when every play is a Jester', () => {
