@@ -202,6 +202,33 @@ describe('MatchResult', () => {
 });
 
 describe('RulesDialog', () => {
+  it('marks and contains the non-native modal fallback', () => {
+    const prototype = HTMLDialogElement.prototype;
+    const showModalDescriptor = Object.getOwnPropertyDescriptor(prototype, 'showModal');
+    Object.defineProperty(prototype, 'showModal', { configurable: true, value: undefined });
+
+    try {
+      render(
+        <>
+          <button type="button" data-testid="background-action">Background action</button>
+          <RulesDialog open onClose={vi.fn()} />
+        </>,
+      );
+
+      const dialog = screen.getByRole('dialog', { name: 'How to play Wizard' });
+      expect(dialog).toHaveClass('app-dialog', 'rules-dialog');
+      expect(dialog).toHaveAttribute('data-fallback', 'true');
+      expect(dialog).toHaveAttribute('open');
+      expect(screen.getByTestId('background-action')).toHaveAttribute('inert');
+    } finally {
+      if (showModalDescriptor === undefined) {
+        Reflect.deleteProperty(prototype, 'showModal');
+      } else {
+        Object.defineProperty(prototype, 'showModal', showModalDescriptor);
+      }
+    }
+  });
+
   it('summarizes every game rule in original concise prose', () => {
     const onClose = vi.fn();
     render(<RulesDialog open onClose={onClose} />);

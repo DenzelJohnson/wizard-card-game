@@ -231,6 +231,18 @@ legend {
   font-weight: 900;
 }
 
+.score--positive {
+  border-color: var(--color-emerald);
+  color: #14513d;
+  font-weight: 800;
+}
+
+.score--negative {
+  border-color: var(--color-burgundy);
+  color: #791c2c;
+  font-weight: 800;
+}
+
 .home-screen {
   position: relative;
   isolation: isolate;

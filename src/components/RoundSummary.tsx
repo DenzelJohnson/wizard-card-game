@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 import type { GameState, RoundPlayerScore } from '../game/types';
 import { formatNumber, formatSigned } from './ScoreSheet';
@@ -10,12 +10,17 @@ export interface RoundSummaryProps {
 
 export function RoundSummary({ state, onContinue }: RoundSummaryProps) {
   const continuedRef = useRef(false);
+  const continueButtonRef = useRef<HTMLButtonElement>(null);
   const record = state.roundScores.at(-1);
   const roundNumber = record?.round ?? state.round;
 
+  useEffect(() => {
+    continueButtonRef.current?.focus();
+  }, []);
+
   return (
     <section className="round-summary" aria-labelledby="round-summary-title">
-      <h2 id="round-summary-title">Round {roundNumber} complete</h2>
+      <h1 id="round-summary-title">Round {roundNumber} complete</h1>
       {record === undefined ? (
         <p>No round score is available.</p>
       ) : (
@@ -42,6 +47,7 @@ export function RoundSummary({ state, onContinue }: RoundSummaryProps) {
         </ul>
       )}
       <button
+        ref={continueButtonRef}
         className="button button--primary round-summary__continue"
         type="button"
         onClick={() => {

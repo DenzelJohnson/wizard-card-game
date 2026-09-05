@@ -38,6 +38,7 @@ export function AccessibleDialog({
 }: AccessibleDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  const nativeModalSupported = supportsModalDialog();
 
   useEffect(() => {
     if (!open) {
@@ -53,8 +54,8 @@ export function AccessibleDialog({
       returnFocusRef?.current ??
       (document.activeElement instanceof HTMLElement ? document.activeElement : null);
 
-    let usingFallback = !supportsModalDialog();
-    if (supportsModalDialog()) {
+    let usingFallback = !nativeModalSupported;
+    if (nativeModalSupported) {
       try {
         if (!dialog.open) {
           dialog.showModal();
@@ -67,6 +68,9 @@ export function AccessibleDialog({
     const inertedElements = usingFallback ? makeBackgroundInert(dialog) : [];
     if (usingFallback) {
       dialog.setAttribute('open', '');
+      dialog.dataset.fallback = 'true';
+    } else {
+      delete dialog.dataset.fallback;
     }
 
     const firstFocusable = (): HTMLElement | null =>
@@ -98,7 +102,7 @@ export function AccessibleDialog({
         opener.focus();
       }
     };
-  }, [initialFocusRef, open, returnFocusRef]);
+  }, [initialFocusRef, nativeModalSupported, open, returnFocusRef]);
 
   if (!open) {
     return null;
@@ -136,7 +140,8 @@ export function AccessibleDialog({
     <dialog
       ref={dialogRef}
       className={`app-dialog${className ? ` ${className}` : ''}`}
-      open={supportsModalDialog() ? undefined : true}
+      open={nativeModalSupported ? undefined : true}
+      data-fallback={nativeModalSupported ? undefined : 'true'}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}

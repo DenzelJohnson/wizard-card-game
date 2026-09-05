@@ -360,7 +360,7 @@ describe('GameTable', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows the game menu and routes the stored round summary Continue action', () => {
+  it('replaces the table with a focused round result and score-menu access', () => {
     const state = scoredState();
     const onContinueRound = vi.fn();
     render(
@@ -374,18 +374,28 @@ describe('GameTable', () => {
       />,
     );
 
+    const main = screen.getByRole('main');
+    const continueButton = screen.getByRole('button', { name: 'Continue' });
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(main).toHaveClass('game-table--result-screen');
+    expect(screen.getByRole('heading', { level: 1, name: 'Round 3 complete' })).toBeInTheDocument();
+    expect(continueButton).toHaveFocus();
     expect(screen.getByRole('group', { name: 'Game menu' })).toBeInTheDocument();
     expect(screen.queryByRole('toolbar', { name: 'Game menu' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Round 3 complete' })).toBeInTheDocument();
     expect(screen.getByRole('listitem', { name: 'You' })).toHaveTextContent(
       '20 + (10 × 2) = +40',
     );
+    expect(screen.queryByRole('heading', { name: 'Current trick' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /your hand/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Opponent summaries' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /seat$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Play / })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(continueButton);
     expect(onContinueRound).toHaveBeenCalledOnce();
   });
 
-  it('shows final winners and routes new-match and home actions', () => {
+  it('replaces the table and menu with only a focused match result surface', () => {
     const onRestart = vi.fn();
     const onHome = vi.fn();
     const state = scoredState('match-result');
@@ -400,10 +410,24 @@ describe('GameTable', () => {
       />,
     );
 
+    const main = screen.getByRole('main');
     const result = screen.getByRole('region', { name: 'Match complete' });
+    const heading = within(result).getByRole('heading', { level: 1, name: 'Match complete' });
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(main).toHaveClass('game-table--result-screen');
+    expect(heading).toHaveFocus();
     expect(within(result).getByRole('status')).toHaveTextContent(
       'You and Mira share the win with 40 points!',
     );
+    expect(screen.queryByRole('group', { name: 'Game menu' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Current trick' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /your hand/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Opponent summaries' })).not.toBeInTheDocument();
+    expect(within(result).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      'Score Sheet',
+      'New Match',
+      'Return Home',
+    ]);
     fireEvent.click(within(result).getByRole('button', { name: 'New Match' }));
     fireEvent.click(within(result).getByRole('button', { name: 'Return Home' }));
     expect(onRestart).toHaveBeenCalledOnce();

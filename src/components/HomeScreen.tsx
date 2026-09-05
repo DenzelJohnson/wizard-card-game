@@ -11,6 +11,8 @@ export interface HomeScreenProps {
 }
 
 const HARD_MODE_DESCRIPTION_ID = 'hard-mode-description';
+const EASY_MODE_TITLE_ID = 'easy-mode-title';
+const EASY_MODE_DESCRIPTION_ID = 'easy-mode-description';
 const NEW_GAME_DIALOG_TITLE_ID = 'new-game-dialog-title';
 const NEW_GAME_DIALOG_DESCRIPTION_ID = 'new-game-dialog-description';
 
@@ -71,12 +73,15 @@ export function HomeScreen({
               ref={easyButtonRef}
               className="mode-card mode-card--easy"
               type="button"
-              aria-label="Easy"
+              aria-labelledby={EASY_MODE_TITLE_ID}
+              aria-describedby={EASY_MODE_DESCRIPTION_ID}
               onClick={startEasyGame}
             >
               <span className="mode-card__icon" aria-hidden="true">♣</span>
-              <span className="mode-card__title">Easy</span>
-              <span className="mode-card__description">Friendly rivals · Random legal moves</span>
+              <span id={EASY_MODE_TITLE_ID} className="mode-card__title">Easy</span>
+              <span id={EASY_MODE_DESCRIPTION_ID} className="mode-card__description">
+                Friendly rivals · Random legal moves
+              </span>
               <span className="mode-card__cta" aria-hidden="true">Enter the tavern →</span>
             </button>
             <button

@@ -87,6 +87,35 @@ export function GameTable({
     }
   }, [activeSounds, state]);
 
+  if (state.phase === 'round-result') {
+    return (
+      <main
+        className="game-table game-table--result-screen"
+        aria-labelledby="round-summary-title"
+      >
+        <RoundSummary state={state} onContinue={onContinueRound} />
+        <GameMenu
+          state={state}
+          soundEnabled={activeSounds.enabled}
+          onToggleSound={activeSounds.toggle}
+          onRestart={onRestart}
+          onHome={onHome}
+        />
+      </main>
+    );
+  }
+
+  if (state.phase === 'match-result') {
+    return (
+      <main
+        className="game-table game-table--result-screen"
+        aria-labelledby="match-result-title"
+      >
+        <MatchResult state={state} onNewMatch={onRestart} onHome={onHome} />
+      </main>
+    );
+  }
+
   return (
     <main className="game-table" aria-labelledby="game-table-heading">
       <header className="table-status">
@@ -173,13 +202,6 @@ export function GameTable({
           />
         ))}
       </section>
-
-      {state.phase === 'round-result' ? (
-        <RoundSummary state={state} onContinue={onContinueRound} />
-      ) : null}
-      {state.phase === 'match-result' ? (
-        <MatchResult state={state} onNewMatch={onRestart} onHome={onHome} />
-      ) : null}
     </main>
   );
 }

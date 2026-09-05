@@ -21,8 +21,12 @@ function renderHome(
 describe('HomeScreen', () => {
   it('starts Easy mode immediately when no saved game exists', () => {
     const props = renderHome();
+    const easyButton = screen.getByRole('button', { name: 'Easy' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
+    expect(easyButton).not.toHaveAttribute('aria-label');
+    expect(easyButton).toHaveAttribute('aria-describedby', 'easy-mode-description');
+    expect(easyButton).toHaveAccessibleDescription('Friendly rivals · Random legal moves');
+    fireEvent.click(easyButton);
 
     expect(props.onStart).toHaveBeenCalledOnce();
   });

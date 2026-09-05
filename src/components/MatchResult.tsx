@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { matchWinners } from '../game/state';
 import type { GameState } from '../game/types';
@@ -13,6 +13,7 @@ export interface MatchResultProps {
 
 export function MatchResult({ state, onNewMatch, onHome }: MatchResultProps) {
   const [scoreSheetOpen, setScoreSheetOpen] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const scoreSheetButtonRef = useRef<HTMLButtonElement>(null);
   const winnerIds = matchWinners(state);
   const winners = winnerIds.map(
@@ -38,10 +39,16 @@ export function MatchResult({ state, onNewMatch, onHome }: MatchResultProps) {
       [],
     );
 
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   return (
     <section className="match-result" aria-labelledby="match-result-title">
       <span className="match-result__ornament" aria-hidden="true">✦ ◆ ✦</span>
-      <h2 id="match-result-title">Match complete</h2>
+      <h1 ref={headingRef} id="match-result-title" tabIndex={-1}>
+        Match complete
+      </h1>
       <p className="match-result__announcement" role="status" aria-live="polite">
         {winners.length === 1
           ? `${winners[0]} win${winnerIds[0] === 'human' ? '' : 's'} with ${formatNumber(winningScore)} points!`
