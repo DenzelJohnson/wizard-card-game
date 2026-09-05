@@ -34,6 +34,7 @@ browser, and is published as a static site from a public GitHub repository using
 | `src/app/` | Application orchestration and phase progression | Engine, AI, storage, UI intents | State updates and persistence requests |
 | `src/styles/` | Fantasy-tavern visual system, responsive layout, motion preferences | Component class names and tokens | Rendered presentation |
 | `tests/` | Unit, integration, and end-to-end verification | Public engine/UI contracts | Test reports only |
+| Root package and tool configuration | ESM runtime, TypeScript project references, Vite build base, and test harness | Source files and package scripts | Development, build, unit-test, and browser-test commands |
 
 ## 4. Databases
 
@@ -69,6 +70,7 @@ No scheduled, local, or external automation exists in the empty starting reposit
 - UI intent contract -> produced by `src/components/`; consumed by `src/app/`
 - Package scripts and lockfile -> produced by project configuration; consumed by local verification and GitHub Actions
 - Vite base path -> produced by Vite configuration; consumed by production asset routing on GitHub Pages
+- Vitest setup -> produced by test configuration; consumed by component tests for DOM cleanup and matcher extensions
 - Deployment workflow -> reads repository source and build configuration; writes the GitHub Pages deployment
 
 ## 9. Known Fragilities / UNVERIFIED
