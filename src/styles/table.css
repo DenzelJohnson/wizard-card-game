@@ -361,34 +361,6 @@
   margin-inline-start: clamp(-2.4rem, -2.8vw, -1.2rem);
 }
 
-.game-table--result-screen {
-  grid-template-areas: none;
-  grid-template-columns: minmax(0, 48rem) minmax(11rem, 15rem);
-  grid-template-rows: auto;
-  align-items: start;
-  justify-content: center;
-  padding: clamp(var(--space-4), 4vw, var(--space-7));
-}
-
-.game-table--result-screen::before {
-  inset: clamp(var(--space-5), 5vw, var(--space-7));
-  border-radius: var(--radius-xl);
-}
-
-.game-table--result-screen > .round-summary {
-  grid-column: 1;
-}
-
-.game-table--result-screen > .game-menu {
-  grid-area: auto;
-  grid-column: 2;
-}
-
-.game-table--result-screen > .match-result {
-  grid-column: 1 / -1;
-  justify-self: center;
-}
-
 .round-summary,
 .match-result {
   position: relative;
@@ -430,9 +402,9 @@
   background: rgb(255 248 225 / 42%);
 }
 
-.round-summary__player h3,
+.round-summary__player h2,
 .round-summary__player p { margin-block-end: var(--space-1); }
-.round-summary__player h3 { color: var(--color-wood-deep); }
+.round-summary__player h2 { color: var(--color-wood-deep); }
 .round-summary__bid,
 .round-summary__calculation { font-size: 0.82rem; }
 .round-summary__total { font-weight: 850; }
@@ -591,19 +563,6 @@
 
   .human-hand > .playing-card { flex: 0 0 auto; scroll-snap-align: center; }
   .human-hand > .playing-card + .playing-card { margin-inline-start: -2rem; }
-  .game-table--result-screen {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto;
-    align-content: start;
-    padding: var(--space-3);
-  }
-
-  .game-table--result-screen > .round-summary,
-  .game-table--result-screen > .game-menu,
-  .game-table--result-screen > .match-result {
-    grid-column: 1;
-  }
-
   .round-summary__scores { grid-template-columns: 1fr; }
 }
 
@@ -613,4 +572,52 @@
   .table-status__prompt,
   .trump-area { grid-column: 1; }
   .game-menu { grid-template-columns: repeat(5, 4.1rem); }
+}
+
+/* Result screens replace the spatial table. Keep this definitive rule after every
+   table breakpoint so named areas, fixed menu tracks, and the oval rim cannot leak in. */
+.game-table.game-table--result-screen {
+  grid-template-areas: none;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
+  grid-auto-rows: max-content;
+  align-content: center;
+  align-items: start;
+  justify-content: stretch;
+  gap: clamp(var(--space-3), 2.5vw, var(--space-5));
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  padding: clamp(var(--space-3), 4vw, var(--space-7));
+  overflow-x: visible;
+}
+
+.game-table.game-table--result-screen::before {
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  background: radial-gradient(circle at 50% 42%, rgb(83 159 126 / 16%), transparent 38rem);
+  box-shadow: inset 0 0 5rem rgb(0 0 0 / 35%);
+}
+
+.game-table.game-table--result-screen > .storage-notice,
+.game-table.game-table--result-screen > .round-summary,
+.game-table.game-table--result-screen > .game-menu {
+  grid-area: auto;
+  grid-column: 1;
+  justify-self: center;
+  inline-size: min(100%, 48rem);
+  max-inline-size: 100%;
+}
+
+.game-table.game-table--result-screen > .match-result {
+  grid-area: auto;
+  grid-column: 1;
+  justify-self: center;
+  inline-size: min(100%, 38rem);
+  max-inline-size: 100%;
+}
+
+.game-table.game-table--result-screen > .game-menu {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow-x: visible;
 }

@@ -371,6 +371,7 @@ describe('GameTable', () => {
         onContinueRound={onContinueRound}
         onRestart={vi.fn()}
         onHome={vi.fn()}
+        storageWarning
       />,
     );
 
@@ -379,7 +380,16 @@ describe('GameTable', () => {
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(main).toHaveClass('game-table--result-screen');
     expect(screen.getByRole('heading', { level: 1, name: 'Round 3 complete' })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('listitem', { name: 'You' })).getByRole('heading', {
+        level: 2,
+        name: 'You',
+      }),
+    ).toBeInTheDocument();
     expect(continueButton).toHaveFocus();
+    expect(
+      within(main).getByText(/this match can continue, but resume may be unavailable/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Game menu' })).toBeInTheDocument();
     expect(screen.queryByRole('toolbar', { name: 'Game menu' })).not.toBeInTheDocument();
     expect(screen.getByRole('listitem', { name: 'You' })).toHaveTextContent(
@@ -407,6 +417,7 @@ describe('GameTable', () => {
         onContinueRound={vi.fn()}
         onRestart={onRestart}
         onHome={onHome}
+        storageWarning
       />,
     );
 
@@ -416,6 +427,9 @@ describe('GameTable', () => {
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(main).toHaveClass('game-table--result-screen');
     expect(heading).toHaveFocus();
+    expect(
+      within(main).getByText(/this match can continue, but resume may be unavailable/i),
+    ).toBeInTheDocument();
     expect(within(result).getByRole('status')).toHaveTextContent(
       'You and Mira share the win with 40 points!',
     );

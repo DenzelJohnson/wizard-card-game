@@ -93,6 +93,7 @@ export function GameTable({
         className="game-table game-table--result-screen"
         aria-labelledby="round-summary-title"
       >
+        {storageWarning ? <StorageWarning /> : null}
         <RoundSummary state={state} onContinue={onContinueRound} />
         <GameMenu
           state={state}
@@ -111,6 +112,7 @@ export function GameTable({
         className="game-table game-table--result-screen"
         aria-labelledby="match-result-title"
       >
+        {storageWarning ? <StorageWarning /> : null}
         <MatchResult state={state} onNewMatch={onRestart} onHome={onHome} />
       </main>
     );

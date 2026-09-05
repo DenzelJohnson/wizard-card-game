@@ -35,7 +35,7 @@ export function RoundSummary({ state, onContinue }: RoundSummaryProps) {
                 }`}
                 aria-label={name}
               >
-                <h3>{name}</h3>
+                <h2>{name}</h2>
                 <p className="round-summary__bid">
                   Bid {score.bid}; Won {score.tricks} {score.tricks === 1 ? 'trick' : 'tricks'}
                 </p>
