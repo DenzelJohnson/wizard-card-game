@@ -58,40 +58,11 @@
   box-shadow: var(--shadow-soft), inset 0 0 1.2rem rgb(47 141 106 / 10%);
 }
 
-.table-status__round {
-  margin-block-end: var(--space-1);
-  color: var(--color-gold-bright);
-  font-family: var(--font-display);
-  font-size: 1.18rem;
-  font-weight: 800;
-}
+.table-status--notice-only { padding: var(--space-2); }
 
-.table-status__prompt {
-  margin-block-end: var(--space-3);
-  font-size: 0.92rem;
-  font-weight: 700;
-}
-
-.table-status .storage-notice {
-  margin-block-end: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  font-size: 0.76rem;
-}
-
-.trump-area {
-  padding-block-start: var(--space-2);
-  border-block-start: 1px solid rgb(240 203 114 / 24%);
-}
-
-.trump-area h2 {
-  margin-block-end: var(--space-1);
-  color: var(--color-gold-bright);
-  font-size: 1rem;
-}
-
-.trump-area__context {
+.table-status--notice-only .storage-notice {
   margin: 0;
-  color: #d9d5c7;
+  padding: var(--space-2) var(--space-3);
   font-size: 0.76rem;
 }
 
@@ -255,7 +226,6 @@
 }
 
 .trick-area h2 {
-  align-self: end;
   margin-block-end: var(--space-2);
   color: var(--color-gold-bright);
   font-size: 0.84rem;
@@ -263,11 +233,53 @@
   text-transform: uppercase;
 }
 
-.trick-area > p {
-  align-self: start;
+.trick-area__surface {
+  position: relative;
+  display: grid;
+  inline-size: 100%;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(var(--space-2), 2vw, var(--space-4));
+}
+
+.trick-area__current {
+  display: grid;
+  min-inline-size: 0;
+  place-items: center;
+}
+
+.trick-area__current > p {
   margin: 0;
   color: rgb(255 244 216 / 68%);
   font-size: 0.8rem;
+}
+
+.face-up-card {
+  position: relative;
+  display: grid;
+  place-items: center;
+  transform: rotate(-5deg);
+}
+
+.face-up-card .playing-card { --card-inline: clamp(3.8rem, 5.5vw, 5.2rem); }
+
+.face-up-card__trump-suit {
+  position: absolute;
+  inset-inline-end: -0.42rem;
+  inset-block-end: -0.35rem;
+  z-index: 3;
+  display: grid;
+  inline-size: clamp(1.8rem, 3.2vw, 2.35rem);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 2px solid #f7d77d;
+  border-radius: 50%;
+  color: var(--color-gold-bright);
+  background: radial-gradient(circle, #5c1f31, #25131e 72%);
+  box-shadow: 0 0.25rem 0.55rem rgb(0 0 0 / 52%);
+  font-family: Georgia, serif;
+  font-size: clamp(1rem, 2vw, 1.4rem);
+  font-weight: 900;
 }
 
 .trick-area__plays {
@@ -492,28 +504,8 @@
   }
 
   .table-status {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0 var(--space-3);
-    align-items: center;
     padding: var(--space-2) var(--space-3);
   }
-
-  .table-status__round,
-  .table-status__prompt { margin: 0; }
-
-  .table-status .storage-notice,
-  .trump-area { grid-column: 1 / -1; }
-
-  .trump-area {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-1) var(--space-3);
-    margin-block-start: var(--space-2);
-  }
-
-  .trump-area h2 { margin: 0; }
 
   .game-menu { grid-template-columns: repeat(5, minmax(4.2rem, 1fr)); overflow-x: auto; }
   .game-menu__button { min-inline-size: 4.2rem; padding-inline: var(--space-2); }
@@ -540,6 +532,18 @@
   }
 
   .trick-area { min-block-size: 9.5rem; padding: var(--space-1); border-radius: var(--radius-lg); }
+  .trick-area__surface {
+    min-block-size: 6.5rem;
+    grid-template-columns: 1fr;
+  }
+  .face-up-card {
+    position: absolute;
+    inset-inline-start: 0.2rem;
+    inset-block-end: 0.2rem;
+    z-index: 3;
+  }
+  .face-up-card .playing-card { --card-inline: clamp(2.9rem, 13vw, 3.7rem); }
+  .face-up-card__trump-suit { inline-size: 1.55rem; font-size: 0.9rem; }
   .trick-area__plays { gap: var(--space-1); }
 
   .human-area { grid-template-columns: 1fr; gap: var(--space-2); }
@@ -568,9 +572,6 @@
 
 @media (max-width: 23rem) {
   .game-table { grid-template-columns: minmax(0, 0.55fr) minmax(8rem, 1.6fr) minmax(0, 0.55fr); }
-  .table-status { grid-template-columns: 1fr; }
-  .table-status__prompt,
-  .trump-area { grid-column: 1; }
   .game-menu { grid-template-columns: repeat(5, 4.1rem); }
 }
 

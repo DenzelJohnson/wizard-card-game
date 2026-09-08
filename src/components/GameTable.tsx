@@ -5,12 +5,12 @@ import {
   type SoundController,
   type SoundControllerOptions,
 } from '../audio/sounds';
-import type { Card, GameAction, GameState, PlayerId, PlayerMetadata, Suit } from '../game/types';
+import type { Card, GameAction, GameState, PlayerId, PlayerMetadata } from '../game/types';
 import { BidPanel } from './BidPanel';
 import { GameMenu } from './GameMenu';
 import { MatchResult } from './MatchResult';
 import { PlayerSeat, type SeatPosition } from './PlayerSeat';
-import { cardName, PlayingCard, suitName, suitSymbol } from './PlayingCard';
+import { PlayingCard } from './PlayingCard';
 import { RoundSummary } from './RoundSummary';
 import { StorageWarning } from './StorageWarning';
 import { TrickArea } from './TrickArea';
@@ -135,15 +135,12 @@ export function GameTable({
       data-round={state.round}
       data-active-player={state.activePlayerId ?? 'none'}
     >
-      <header className="table-status">
-        <h1 id="game-table-heading" className="sr-only">Wizard game table</h1>
-        <p className="table-status__round">Round {state.round} of 15</p>
-        <p className="table-status__prompt" role="status" aria-live="polite">
-          {phasePrompt(state)}
-        </p>
-        {storageWarning ? <StorageWarning /> : null}
-        <TrumpDisplay state={state} />
-      </header>
+      <h1 id="game-table-heading" className="sr-only">Wizard game table</h1>
+      {storageWarning ? (
+        <aside className="table-status table-status--notice-only" aria-label="Save status">
+          <StorageWarning />
+        </aside>
+      ) : null}
 
       <GameMenu
         state={state}
@@ -153,7 +150,13 @@ export function GameTable({
         onHome={onHome}
       />
 
-      <TrickArea plays={state.currentTrick} players={state.players} />
+      <TrickArea
+        plays={state.currentTrick}
+        players={state.players}
+        revealedUpCard={state.revealedUpCard}
+        trump={state.trump}
+        dealerChoosingTrump={state.phase === 'choose-trump' && state.trump === null}
+      />
 
       {bidActions.length > 0 || trumpActions.length > 0 ? (
         <section className="decision-area" aria-label="Your decision">
@@ -268,69 +271,6 @@ function Seat({
       hiddenCardCount={hiddenCardCount}
     />
   );
-}
-
-function TrumpDisplay({ state }: { readonly state: GameState }) {
-  const dealerChoosing = state.phase === 'choose-trump' && state.trump === null;
-  const trumpText = dealerChoosing
-    ? 'Dealer choosing'
-    : state.trump === null
-      ? 'No trump'
-      : `${suitSymbol(state.trump)} ${suitName(state.trump)}`;
-
-  return (
-    <section className="trump-area" aria-label="Trump">
-      <h2>Trump: {trumpText}</h2>
-      <p className="trump-area__context">
-        {upCardContext(state.revealedUpCard, state.trump, dealerChoosing)}
-      </p>
-    </section>
-  );
-}
-
-function upCardContext(card: Card | null, trump: Suit | null, dealerChoosing: boolean): string {
-  if (card === null) {
-    return 'No up card this round.';
-  }
-  if (card.kind === 'wizard') {
-    if (dealerChoosing) {
-      return 'Revealed Wizard — dealer chooses trump.';
-    }
-    return trump === null
-      ? 'Revealed Wizard.'
-      : `Revealed Wizard — dealer chose ${suitName(trump)}.`;
-  }
-
-  return `Up card: ${cardName(card)}`;
-}
-
-function phasePrompt(state: GameState): string {
-  const activeName = state.players.find((player) => player.id === state.activePlayerId)?.name;
-
-  switch (state.phase) {
-    case 'round-setup':
-      return 'Dealing round…';
-    case 'choose-trump':
-      return state.activePlayerId === 'human'
-        ? 'Choose a trump suit.'
-        : `${activeName ?? 'Computer'} is choosing trump…`;
-    case 'bidding':
-      return state.activePlayerId === 'human'
-        ? 'Choose your bid.'
-        : `${activeName ?? 'Computer'} is bidding…`;
-    case 'playing':
-      return state.activePlayerId === 'human'
-        ? state.currentTrick.length === 0
-          ? 'Lead a card.'
-          : 'Play a card.'
-        : `${activeName ?? 'Computer'} is playing…`;
-    case 'trick-result':
-      return `${activeName ?? 'A player'} won the trick.`;
-    case 'round-result':
-      return `Round ${state.round} complete.`;
-    case 'match-result':
-      return 'Match complete.';
-  }
 }
 
 function isDecisionPhase(phase: GameState['phase']): boolean {

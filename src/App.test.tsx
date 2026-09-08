@@ -104,7 +104,8 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByRole('heading', { name: 'Wizard game table' })).toBeInTheDocument();
-    expect(screen.getByText('Round 1 of 15')).toBeInTheDocument();
+    expect(screen.getByTestId('game-state')).toHaveAttribute('data-round', '1');
+    expect(screen.queryByText('Round 1 of 15')).not.toBeInTheDocument();
   });
 
   it('keeps a storage warning visible during an active game', () => {

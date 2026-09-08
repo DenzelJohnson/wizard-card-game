@@ -62,7 +62,7 @@ describe('screen accessibility contracts', () => {
     ).toBeNull();
   });
 
-  it('keeps the game to one main landmark with textual status, trump, and style-free markers', () => {
+  it('keeps the game to one main landmark with an accessible face-up card and style-free markers', () => {
     const state = accessibleTableState();
     const { container } = render(
       <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
@@ -70,8 +70,10 @@ describe('screen accessibility contracts', () => {
 
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(screen.getByRole('heading', { level: 1, name: 'Wizard game table' })).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Ember is bidding…');
-    expect(screen.getByRole('heading', { name: 'Trump: ♥ Hearts' })).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    const reveal = screen.getByLabelText('Face-up card: Ten of Hearts. Hearts are trump.');
+    expect(within(reveal).getByRole('img', { name: 'Ten of Hearts' })).toBeInTheDocument();
+    expect(screen.queryByText(/Trump:/)).not.toBeInTheDocument();
     expect(
       within(screen.getByRole('region', { name: 'Ember seat' })).getByText('Active'),
     ).toHaveClass('seat-marker--active');

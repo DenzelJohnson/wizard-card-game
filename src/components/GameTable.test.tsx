@@ -182,19 +182,24 @@ describe('GameTable', () => {
     expect(container.querySelector('[data-kind="wizard"], [data-kind="jester"]')).toBeNull();
   });
 
-  it('announces round, phase, dealer, active player, score details, and trump in text', () => {
+  it('leaves the top-left clear and shows the face-up trump card on the felt', () => {
     const state = displayState();
-    render(<GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />);
+    const { container } = render(
+      <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
+    );
 
-    expect(screen.getByText('Round 3 of 15')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Ember is bidding…');
+    expect(container.querySelector('.table-status')).toBeNull();
+    expect(screen.queryByText('Round 3 of 15')).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Ember seat' })).getByText('Active')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Rowan seat' })).getByText('Dealer')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'You seat' })).getByText('Bid: —')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'You seat' })).getByText('Tricks: 1')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'You seat' })).getByText('Score: 30')).toBeInTheDocument();
-    expect(screen.getByText(/Trump: ♥ Hearts/)).toBeInTheDocument();
-    expect(screen.getByText('Up card: Ten of Hearts')).toBeInTheDocument();
+    expect(screen.queryByText(/Trump:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Up card:/)).not.toBeInTheDocument();
+    const reveal = screen.getByLabelText('Face-up card: Ten of Hearts. Hearts are trump.');
+    expect(within(reveal).getByRole('img', { name: 'Ten of Hearts' })).toBeInTheDocument();
   });
 
   it('renders exactly the engine-provided human bid actions and emits the chosen payload', () => {
@@ -243,7 +248,8 @@ describe('GameTable', () => {
     const onAction = vi.fn();
     render(<GameTable state={state} legalActions={actions} onAction={onAction} />);
 
-    expect(screen.getByText(/Revealed Wizard.*dealer chooses trump/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Face-up card: Wizard. Dealer is choosing trump.')).toBeInTheDocument();
+    expect(document.querySelector('.face-up-card__trump-suit')).toBeNull();
     expect(
       within(screen.getByRole('group', { name: 'Choose trump' })).getAllByRole('button'),
     ).toHaveLength(4);
@@ -279,15 +285,38 @@ describe('GameTable', () => {
     expect(controls[0]).toHaveAccessibleName('♥ Hearts');
   });
 
-  it('shows clear no-trump context for a revealed Jester', () => {
+  it('shows a revealed Jester on the felt without trump prose', () => {
     const state = displayState({
       trump: null,
       revealedUpCard: { id: 'up-jester', kind: 'jester' },
     });
     render(<GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />);
 
-    expect(screen.getByText('Trump: No trump')).toBeInTheDocument();
-    expect(screen.getByText('Up card: Jester')).toBeInTheDocument();
+    const reveal = screen.getByLabelText('Face-up card: Jester. No trump this round.');
+    expect(within(reveal).getByRole('img', { name: 'Jester' })).toBeInTheDocument();
+    expect(screen.queryByText(/Trump:/)).not.toBeInTheDocument();
+  });
+
+  it('marks a revealed Wizard with only the resolved trump suit symbol', () => {
+    const state = displayState({
+      trump: 'spades',
+      revealedUpCard: { id: 'up-wizard', kind: 'wizard' },
+    });
+    const { container } = render(
+      <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
+    );
+
+    const reveal = screen.getByLabelText('Face-up card: Wizard. Spades are trump.');
+    expect(within(reveal).getByRole('img', { name: 'Wizard' })).toBeInTheDocument();
+    expect(container.querySelector('.face-up-card__trump-suit')).toHaveTextContent('♠');
+    expect(screen.queryByText(/Trump:/)).not.toBeInTheDocument();
+  });
+
+  it('shows no face-up card in round 15', () => {
+    const state = displayState({ round: 15, trump: null, revealedUpCard: null });
+    render(<GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />);
+
+    expect(screen.queryByLabelText(/Face-up card:/)).not.toBeInTheDocument();
   });
 
   it('enables only exact human PLAY_CARD actions in a follow-suit situation', () => {
@@ -333,7 +362,7 @@ describe('GameTable', () => {
       fireEvent.click(card);
     }
     expect(onAction).not.toHaveBeenCalled();
-    expect(screen.getByRole('status')).toHaveTextContent('Ember is playing…');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Ember seat' })).getByText('Leader')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Your decision' })).not.toBeInTheDocument();
   });
@@ -356,7 +385,7 @@ describe('GameTable', () => {
     expect(within(screen.getByRole('region', { name: 'You seat' })).getByText('Leader')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Rowan seat' })).getByText('Winner')).toBeInTheDocument();
     expect(screen.queryByText('Active')).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Rowan won the trick.');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('renders a gameplay storage warning within the game table main landmark', () => {
