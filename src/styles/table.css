@@ -408,8 +408,8 @@
   display: flex;
   min-inline-size: 0;
   align-items: end;
-  justify-content: center;
-  padding: 3rem clamp(var(--space-5), 5vw, var(--space-7)) var(--space-4);
+  justify-content: safe center;
+  padding: 4.5rem clamp(var(--space-5), 5vw, var(--space-7)) var(--space-5);
   overflow-x: auto;
   border: 1px solid rgb(240 203 114 / 25%);
   border-radius: var(--radius-xl) var(--radius-xl) var(--radius-md) var(--radius-md);
@@ -419,8 +419,18 @@
   scrollbar-width: thin;
 }
 
+.human-hand > .playing-card {
+  --card-inline: clamp(10.4rem, 16vw, 14.3rem);
+  flex: 0 0 var(--card-inline);
+}
+
 .human-hand > .playing-card + .playing-card {
-  margin-inline-start: clamp(-2.4rem, -2.8vw, -1.2rem);
+  margin-inline-start: clamp(-4.8rem, -5.6vw, -2.4rem);
+}
+
+.human-hand .playing-card--disabled:disabled {
+  filter: none;
+  opacity: 1;
 }
 
 .round-summary,
@@ -634,12 +644,12 @@
 
   .human-hand {
     justify-content: flex-start;
-    padding: 2.5rem var(--space-5) var(--space-3);
+    padding: 4rem var(--space-5) var(--space-4);
     scroll-snap-type: x proximity;
   }
 
   .human-hand > .playing-card { flex: 0 0 auto; scroll-snap-align: center; }
-  .human-hand > .playing-card + .playing-card { margin-inline-start: -2rem; }
+  .human-hand > .playing-card + .playing-card { margin-inline-start: -4rem; }
   .round-summary__scores { grid-template-columns: 1fr; }
 }
 

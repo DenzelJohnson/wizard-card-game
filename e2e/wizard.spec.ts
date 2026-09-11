@@ -185,6 +185,29 @@ test('withholds bids until the human bids and then parks the reveal in the upper
   }
 });
 
+test('enlarges human hand cards without fading their disabled state', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'desktop hand-size coverage');
+
+  await openFresh(page, SEED_PATH);
+  await page.getByRole('button', { name: 'Easy' }).click();
+  await reachHumanPhase(page, 'bidding');
+
+  const card = page.locator('.human-hand .playing-card').first();
+  await expect(card).toBeDisabled();
+  const presentation = await card.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      width: element.getBoundingClientRect().width,
+      opacity: style.opacity,
+      filter: style.filter,
+    };
+  });
+
+  expect(presentation.width).toBeGreaterThanOrEqual(150);
+  expect(presentation.opacity).toBe('1');
+  expect(presentation.filter).toBe('none');
+});
+
 test.describe('normal-motion resume flows', () => {
   test.use({ reducedMotion: 'no-preference' });
 
