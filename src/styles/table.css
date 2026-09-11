@@ -657,7 +657,7 @@
   }
 
   .human-hand > .playing-card { flex: 0 0 auto; scroll-snap-align: center; }
-  .human-hand > .playing-card + .playing-card { margin-inline-start: -4rem; }
+  .human-hand > .playing-card + .playing-card { margin-inline-start: -3.2rem; }
   .round-summary__scores { grid-template-columns: 1fr; }
 }
 
