@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { chooseEasyAction } from '../ai/easy';
+import { chooseMediumAction } from '../ai/medium';
 import { createMatch, legalActions as engineLegalActions, reduceGame } from '../game/state';
 import type { Difficulty, GameAction, GameState } from '../game/types';
 import { clearGame, loadGame, saveGame, type StorageLike } from '../storage/save';
@@ -144,7 +145,9 @@ export function useWizardGame(options: WizardGameOptions = {}): WizardGameContro
             return;
           }
 
-          const choice = chooseEasyAction(state);
+          const choice = state.difficulty === 'medium'
+            ? chooseMediumAction(state)
+            : chooseEasyAction(state);
           if (choice === null || currentStateRef.current !== state) {
             return;
           }

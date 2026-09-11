@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { chooseEasyAction } from '../ai/easy';
+import { chooseMediumAction } from '../ai/medium';
 import { createMatch, legalActions, reduceGame } from '../game/state';
 import type { GameAction, GameState } from '../game/types';
 import { SAVE_KEY, type StorageLike } from '../storage/save';
@@ -167,6 +168,22 @@ function consecutiveComputerDecisionState(): GameState {
     const afterFirst = reduceGame({ ...state, rng: firstChoice.rng }, firstChoice.action);
     return chooseEasyAction(afterFirst) !== null;
   });
+}
+
+function distinctMediumDecisionState(): GameState {
+  let state = createMatch(7);
+  for (let transition = 0; transition < 800; transition += 1) {
+    const mediumState = { ...state, difficulty: 'medium' as const };
+    const easy = chooseEasyAction(mediumState);
+    const medium = chooseMediumAction(mediumState);
+    if (easy !== null && medium !== null && JSON.stringify(easy.action) !== JSON.stringify(medium.action)) {
+      return mediumState;
+    }
+    const action = legalActions(state)[0];
+    if (action === undefined) break;
+    state = reduceGame(state, action);
+  }
+  throw new Error('No distinct Medium decision fixture found.');
 }
 
 function trickResultState(): GameState {
@@ -405,6 +422,22 @@ describe('useWizardGame', () => {
     expect(result.current.state).toEqual(expected);
     expect(result.current.state?.rng).toEqual(choice.rng);
     expect(storage.setAttempts).toBe(1);
+  });
+
+  it('routes Medium matches through the rule-based strategy without consuming RNG', () => {
+    const saved = distinctMediumDecisionState();
+    const storage = new MemoryStorage(saved);
+    const { result } = renderHook(() => useWizardGame({ storage }));
+    act(() => result.current.continueGame());
+    const current = result.current.state as GameState;
+    const choice = chooseMediumAction(current);
+    if (choice === null) throw new Error('Expected a Medium decision fixture.');
+    const expected = reduceGame(current, choice.action);
+
+    act(() => vi.advanceTimersByTime(450));
+
+    expect(result.current.state).toEqual(expected);
+    expect(result.current.state?.rng).toEqual(current.rng);
   });
 
   it('runs consecutive StrictMode computer turns at separate 450ms boundaries with each RNG persisted', () => {
