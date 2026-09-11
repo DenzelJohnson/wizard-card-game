@@ -420,12 +420,12 @@
 }
 
 .human-hand > .playing-card {
-  --card-inline: clamp(10.4rem, 16vw, 14.3rem);
+  --card-inline: clamp(8.32rem, 12.8vw, 11.44rem);
   flex: 0 0 var(--card-inline);
 }
 
 .human-hand > .playing-card + .playing-card {
-  margin-inline-start: clamp(-4.8rem, -5.6vw, -2.4rem);
+  margin-inline-start: clamp(-3.84rem, -4.48vw, -1.92rem);
 }
 
 .human-hand .playing-card--disabled:disabled {
