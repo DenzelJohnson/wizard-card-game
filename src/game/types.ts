@@ -15,6 +15,7 @@ export interface RngState {
 export const PLAYER_IDS = Object.freeze(['human', 'ember', 'rowan', 'mira'] as const);
 
 export type PlayerId = (typeof PLAYER_IDS)[number];
+export type Difficulty = 'easy' | 'medium';
 
 export interface PlayerMetadata {
   readonly id: PlayerId;
@@ -80,7 +81,7 @@ export interface RoundScoreRecord {
 export interface GameState {
   readonly schemaVersion: 1;
   readonly matchId: string;
-  readonly difficulty: 'easy';
+  readonly difficulty: Difficulty;
   readonly players: readonly PlayerMetadata[];
   readonly phase: GamePhase;
   readonly round: number;

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { chooseEasyAction } from '../ai/easy';
 import { createMatch, legalActions as engineLegalActions, reduceGame } from '../game/state';
-import type { GameAction, GameState } from '../game/types';
+import type { Difficulty, GameAction, GameState } from '../game/types';
 import { clearGame, loadGame, saveGame, type StorageLike } from '../storage/save';
 
 const COMPUTER_DECISION_DELAY_MS = 450;
@@ -33,7 +33,7 @@ export interface WizardGameController {
   readonly hasSavedGame: boolean;
   readonly storageWarning: boolean;
   readonly legalActions: readonly GameAction[];
-  startGame(seed?: number): void;
+  startGame(difficulty?: Difficulty, seed?: number): void;
   continueGame(): void;
   dispatchHuman(action: GameAction): void;
   acknowledgeRound(): void;
@@ -164,8 +164,8 @@ export function useWizardGame(options: WizardGameOptions = {}): WizardGameContro
   }, [applyAction, commitTransition, computerDecisionMs, reducedMotion, screen, state, trickResultMs]);
 
   const startGame = useCallback(
-    (seed?: number): void => {
-      const nextState = createMatch(seed ?? seedFactory());
+    (difficulty: Difficulty = 'easy', seed?: number): void => {
+      const nextState = createMatch(seed ?? seedFactory(), difficulty);
 
       resumeCandidateRef.current = null;
       currentStateRef.current = nextState;

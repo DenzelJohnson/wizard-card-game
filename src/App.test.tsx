@@ -42,7 +42,17 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: 'Wizard' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
-    expect(startGame).toHaveBeenCalledOnce();
+    expect(startGame).toHaveBeenCalledWith('easy', undefined);
+  });
+
+  it('routes Medium mode to the controller', () => {
+    const startGame = vi.fn();
+    useWizardGameMock.mockReturnValue(controller({ startGame }));
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Medium' }));
+
+    expect(startGame).toHaveBeenCalledWith('medium', undefined);
   });
 
   it('passes a valid development URL seed to a new Easy match', () => {
@@ -53,7 +63,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
 
-    expect(startGame).toHaveBeenCalledWith(42);
+    expect(startGame).toHaveBeenCalledWith('easy', 42);
   });
 
   it('accepts a signed safe integer development seed', () => {
@@ -64,7 +74,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
 
-    expect(startGame).toHaveBeenCalledWith(-1);
+    expect(startGame).toHaveBeenCalledWith('easy', -1);
   });
 
   it.each(['', '4.2', '12cards', '9007199254740992', '-9007199254740992'])(
@@ -77,7 +87,7 @@ describe('App', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Easy' }));
 
-      expect(startGame).toHaveBeenCalledWith(undefined);
+      expect(startGame).toHaveBeenCalledWith('easy', undefined);
     },
   );
 
@@ -192,7 +202,7 @@ describe('App', () => {
     fireEvent.click(within(result).getByRole('button', { name: 'New Match' }));
     fireEvent.click(within(result).getByRole('button', { name: 'Return Home' }));
 
-    expect(startGame).toHaveBeenCalledOnce();
+    expect(startGame).toHaveBeenCalledWith(state.difficulty, undefined);
     expect(abandonGame).toHaveBeenCalledOnce();
   });
 });

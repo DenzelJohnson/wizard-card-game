@@ -213,6 +213,14 @@ describe('browser save boundary', () => {
     expect(loadGame(storage)).toEqual({ ok: true, state });
   });
 
+  it('round-trips a schema-v1 Medium match while retaining Easy compatibility', () => {
+    const storage = new MemoryStorage();
+    const medium = createMatch(42, 'medium');
+
+    expect(saveGame(storage, medium)).toEqual({ ok: true });
+    expect(loadGame(storage)).toEqual({ ok: true, state: medium });
+  });
+
   it('accepts reducer-produced states from every resumable phase', () => {
     const phases = phaseFixtures();
 

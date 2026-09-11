@@ -140,7 +140,7 @@ function isStructurallyValidGameStateV1(
     !hasExactKeys(value, ROOT_KEYS) ||
     value.schemaVersion !== 1 ||
     !isNonemptyString(value.matchId) ||
-    value.difficulty !== 'easy' ||
+    (value.difficulty !== 'easy' && value.difficulty !== 'medium') ||
     !isPlayers(value.players) ||
     !isPhase(value.phase) ||
     !isIntegerInRange(value.round, 1, MAX_ROUNDS) ||

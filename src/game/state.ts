@@ -7,6 +7,7 @@ import {
   PLAYER_IDS,
   SUITS,
   type Card,
+  type Difficulty,
   type GameAction,
   type GameState,
   type PlayerId,
@@ -17,7 +18,7 @@ import {
 export const EVENT_LIMIT = 24;
 export const MAX_ROUNDS = 15;
 
-export function createMatch(seed: number): GameState {
+export function createMatch(seed: number, difficulty: Difficulty = 'easy'): GameState {
   const initialRng = createRng(seed);
   const dealerChoice = nextRandom(initialRng);
   const dealerId = PLAYER_IDS[Math.floor(dealerChoice.value * PLAYER_IDS.length)];
@@ -25,7 +26,7 @@ export function createMatch(seed: number): GameState {
   return {
     schemaVersion: 1,
     matchId: `wizard-${initialRng.value.toString(16).padStart(8, '0')}`,
-    difficulty: 'easy',
+    difficulty,
     players: PLAYERS,
     phase: 'round-setup',
     round: 1,

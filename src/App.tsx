@@ -17,7 +17,7 @@ export function App() {
         onAction={game.dispatchHuman}
         storageWarning={game.storageWarning}
         onContinueRound={game.acknowledgeRound}
-        onRestart={() => game.startGame(developmentSeed)}
+        onRestart={() => game.startGame(game.state?.difficulty ?? 'easy', developmentSeed)}
         onHome={game.abandonGame}
       />
     );
@@ -27,7 +27,7 @@ export function App() {
     <HomeScreen
       hasSavedGame={game.hasSavedGame}
       storageWarning={game.storageWarning}
-      onStart={() => game.startGame(developmentSeed)}
+      onStart={(difficulty) => game.startGame(difficulty, developmentSeed)}
       onContinue={game.continueGame}
     />
   );

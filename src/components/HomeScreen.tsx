@@ -2,17 +2,20 @@ import { useRef, useState } from 'react';
 import { AccessibleDialog } from './AccessibleDialog';
 import { RulesDialog } from './RulesDialog';
 import { StorageWarning } from './StorageWarning';
+import type { Difficulty } from '../game/types';
 
 export interface HomeScreenProps {
   readonly hasSavedGame: boolean;
   readonly storageWarning: boolean;
-  readonly onStart: () => void;
+  readonly onStart: (difficulty: Difficulty) => void;
   readonly onContinue: () => void;
 }
 
 const HARD_MODE_DESCRIPTION_ID = 'hard-mode-description';
 const EASY_MODE_TITLE_ID = 'easy-mode-title';
 const EASY_MODE_DESCRIPTION_ID = 'easy-mode-description';
+const MEDIUM_MODE_TITLE_ID = 'medium-mode-title';
+const MEDIUM_MODE_DESCRIPTION_ID = 'medium-mode-description';
 const NEW_GAME_DIALOG_TITLE_ID = 'new-game-dialog-title';
 const NEW_GAME_DIALOG_DESCRIPTION_ID = 'new-game-dialog-description';
 
@@ -23,22 +26,25 @@ export function HomeScreen({
   onContinue,
 }: HomeScreenProps) {
   const [openDialog, setOpenDialog] = useState<'new-game' | 'rules' | null>(null);
-  const easyButtonRef = useRef<HTMLButtonElement>(null);
+  const newGameTriggerRef = useRef<HTMLButtonElement>(null);
   const rulesButtonRef = useRef<HTMLButtonElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const [pendingDifficulty, setPendingDifficulty] = useState<Difficulty>('easy');
 
-  const startEasyGame = (): void => {
+  const startGame = (difficulty: Difficulty, trigger: HTMLButtonElement): void => {
     if (hasSavedGame) {
+      newGameTriggerRef.current = trigger;
+      setPendingDifficulty(difficulty);
       setOpenDialog('new-game');
       return;
     }
 
-    onStart();
+    onStart(difficulty);
   };
 
   const confirmNewGame = (): void => {
     setOpenDialog(null);
-    onStart();
+    onStart(pendingDifficulty);
   };
 
   return (
@@ -70,12 +76,11 @@ export function HomeScreen({
           <h2 id="choose-mode-heading">Choose a mode</h2>
           <div className="mode-selector__grid">
             <button
-              ref={easyButtonRef}
               className="mode-card mode-card--easy"
               type="button"
               aria-labelledby={EASY_MODE_TITLE_ID}
               aria-describedby={EASY_MODE_DESCRIPTION_ID}
-              onClick={startEasyGame}
+              onClick={(event) => startGame('easy', event.currentTarget)}
             >
               <span className="mode-card__icon" aria-hidden="true">♣</span>
               <span id={EASY_MODE_TITLE_ID} className="mode-card__title">Easy</span>
@@ -83,6 +88,20 @@ export function HomeScreen({
                 Friendly rivals · Random legal moves
               </span>
               <span className="mode-card__cta" aria-hidden="true">Enter the tavern →</span>
+            </button>
+            <button
+              className="mode-card mode-card--medium"
+              type="button"
+              aria-labelledby={MEDIUM_MODE_TITLE_ID}
+              aria-describedby={MEDIUM_MODE_DESCRIPTION_ID}
+              onClick={(event) => startGame('medium', event.currentTarget)}
+            >
+              <span className="mode-card__icon" aria-hidden="true">♥</span>
+              <span id={MEDIUM_MODE_TITLE_ID} className="mode-card__title">Medium</span>
+              <span id={MEDIUM_MODE_DESCRIPTION_ID} className="mode-card__description">
+                Strategic rule-based rivals · No learning
+              </span>
+              <span className="mode-card__cta" aria-hidden="true">Accept the challenge →</span>
             </button>
             <button
               className="mode-card mode-card--locked"
@@ -124,7 +143,7 @@ export function HomeScreen({
         descriptionId={NEW_GAME_DIALOG_DESCRIPTION_ID}
         onClose={() => setOpenDialog(null)}
         initialFocusRef={cancelButtonRef}
-        returnFocusRef={easyButtonRef}
+        returnFocusRef={newGameTriggerRef}
         className="confirm-dialog"
       >
         <div className="dialog-heading">

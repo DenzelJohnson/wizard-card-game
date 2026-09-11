@@ -107,6 +107,13 @@ describe('createMatch', () => {
     expect(JSON.parse(JSON.stringify(first))).toEqual(first);
   });
 
+  it('records Medium difficulty without changing deterministic match setup', () => {
+    const medium = createMatch(42, 'medium');
+
+    expect(medium.difficulty).toBe('medium');
+    expect({ ...medium, difficulty: 'easy' }).toEqual(createMatch(42));
+  });
+
   it('publishes immutable clockwise player metadata with one human', () => {
     expect(PLAYER_IDS).toEqual(['human', 'ember', 'rowan', 'mira']);
     expect(PLAYERS.map(({ name }) => name)).toEqual(['You', 'Ember', 'Rowan', 'Mira']);

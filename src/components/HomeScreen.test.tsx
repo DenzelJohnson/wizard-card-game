@@ -28,7 +28,18 @@ describe('HomeScreen', () => {
     expect(easyButton).toHaveAccessibleDescription('Friendly rivals · Random legal moves');
     fireEvent.click(easyButton);
 
-    expect(props.onStart).toHaveBeenCalledOnce();
+    expect(props.onStart).toHaveBeenCalledWith('easy');
+  });
+
+  it('offers Medium as an enabled rule-based mode', () => {
+    const props = renderHome();
+    const mediumButton = screen.getByRole('button', { name: 'Medium' });
+
+    expect(mediumButton).toBeEnabled();
+    expect(mediumButton).toHaveAccessibleDescription(/strategic rule-based rivals/i);
+    fireEvent.click(mediumButton);
+
+    expect(props.onStart).toHaveBeenCalledWith('medium');
   });
 
   it('shows Hard as a described native disabled Beta option', () => {
@@ -67,7 +78,7 @@ describe('HomeScreen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Start New Game' }));
 
-    expect(props.onStart).toHaveBeenCalledOnce();
+    expect(props.onStart).toHaveBeenCalledWith('easy');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 

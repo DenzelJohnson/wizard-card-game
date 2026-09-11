@@ -288,7 +288,7 @@ describe('useWizardGame', () => {
     const seedFactory = vi.fn(() => 99);
     const { result } = renderHook(() => useWizardGame({ storage, seedFactory }));
 
-    act(() => result.current.startGame(42));
+    act(() => result.current.startGame('easy', 42));
 
     expect(seedFactory).not.toHaveBeenCalled();
     expect(result.current.state).toEqual(reduceGame(createMatch(42), { type: 'DEAL_ROUND' }));
@@ -609,7 +609,7 @@ describe('useWizardGame', () => {
     act(() => result.current.continueGame());
     expect(vi.getTimerCount()).toBe(1);
 
-    act(() => result.current.startGame(seedForHumanDecision()));
+    act(() => result.current.startGame('easy', seedForHumanDecision()));
     const replacement = result.current.state;
     const saveAttempts = storage.setAttempts;
     expect(replacement?.activePlayerId).toBe('human');
@@ -625,7 +625,7 @@ describe('useWizardGame', () => {
     act(() => result.current.continueGame());
     expect(vi.getTimerCount()).toBe(1);
 
-    act(() => result.current.startGame(seedForHumanDecision()));
+    act(() => result.current.startGame('easy', seedForHumanDecision()));
     const replacement = result.current.state;
     const saveAttempts = storage.setAttempts;
 
@@ -639,7 +639,7 @@ describe('useWizardGame', () => {
     storage.throwOnSet = true;
     const { result } = renderHook(() => useWizardGame({ storage }));
 
-    act(() => result.current.startGame(seedForHumanDecision()));
+    act(() => result.current.startGame('easy', seedForHumanDecision()));
 
     expect(result.current.screen).toBe('game');
     expect(result.current.state).not.toBeNull();
@@ -654,11 +654,11 @@ describe('useWizardGame', () => {
     storage.throwOnSet = true;
     const { result } = renderHook(() => useWizardGame({ storage }));
 
-    act(() => result.current.startGame(seedForHumanDecision()));
+    act(() => result.current.startGame('easy', seedForHumanDecision()));
     expect(result.current.storageWarning).toBe(true);
 
     storage.throwOnSet = false;
-    act(() => result.current.startGame(seedForHumanDecision()));
+    act(() => result.current.startGame('easy', seedForHumanDecision()));
 
     expect(result.current.storageWarning).toBe(false);
     expect(result.current.hasSavedGame).toBe(true);
