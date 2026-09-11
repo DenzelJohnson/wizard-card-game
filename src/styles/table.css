@@ -221,7 +221,7 @@
 .seat-table-stats strong { font-family: var(--font-display); font-size: clamp(1.55rem, 2.7vw, 2.25rem); }
 .player-seat--left .seat-table-stats { inset-block-start: 50%; inset-inline-end: -5.2rem; transform: translateY(-50%); }
 .player-seat--right .seat-table-stats { inset-block-start: 50%; inset-inline-start: -5.2rem; transform: translateY(-50%); }
-.player-seat--top .seat-table-stats { inset-block-end: -3.8rem; inset-inline-start: 50%; transform: translateX(-50%); }
+.player-seat--top .seat-table-stats { inset-block-end: 1rem; inset-inline-end: -6.2rem; }
 
 .trick-area {
   z-index: var(--z-table);
@@ -262,6 +262,11 @@
   padding: 2.3rem 4.8rem;
 }
 
+.trick-area__surface--dealer-top .trick-area__current { padding-block-start: 5.4rem; }
+.trick-area__surface--dealer-bottom .trick-area__current { padding-block-end: 5.4rem; }
+.trick-area__surface--dealer-left .trick-area__current { padding-inline-start: 5.4rem; }
+.trick-area__surface--dealer-right .trick-area__current { padding-inline-end: 5.4rem; }
+
 .trick-area__current > p {
   margin: 0;
   color: rgb(255 244 216 / 68%);
@@ -275,7 +280,7 @@
   place-items: center;
 }
 
-.face-up-card--top { inset-block-start: 0; inset-inline-start: 50%; transform: translate(-50%, -18%) rotate(-3deg); }
+.face-up-card--top { inset-block-start: 0; inset-inline-start: 50%; transform: translateX(-50%) rotate(-3deg); }
 .face-up-card--right { inset-block-start: 50%; inset-inline-end: 0; transform: translate(18%, -50%) rotate(5deg); }
 .face-up-card--bottom { inset-block-end: 0; inset-inline-start: 50%; transform: translate(-50%, 18%) rotate(3deg); }
 .face-up-card--left { inset-block-start: 50%; inset-inline-start: 0; transform: translate(-18%, -50%) rotate(-5deg); }
@@ -548,9 +553,9 @@
   .seat-table-stats { gap: var(--space-1); }
   .seat-table-stats small { font-size: 0.5rem; }
   .seat-table-stats strong { font-size: 1.25rem; }
-  .player-seat--left .seat-table-stats { inset-inline-end: -3.3rem; }
-  .player-seat--right .seat-table-stats { inset-inline-start: -3.3rem; }
-  .player-seat--top .seat-table-stats { inset-block-end: -2.8rem; }
+  .player-seat--left .seat-table-stats { inset-inline-end: -4rem; }
+  .player-seat--right .seat-table-stats { inset-inline-start: -4rem; }
+  .player-seat--top .seat-table-stats { inset-block-end: 0.45rem; inset-inline-end: -3.3rem; }
 
   .hidden-card-stack {
     inline-size: min(100%, 5.5rem);
@@ -564,6 +569,10 @@
     grid-template-columns: 1fr;
   }
   .trick-area__current { padding: 2rem 3rem; }
+  .trick-area__surface--dealer-top .trick-area__current { padding-block-start: 4rem; }
+  .trick-area__surface--dealer-bottom .trick-area__current { padding-block-end: 4rem; }
+  .trick-area__surface--dealer-left .trick-area__current { padding-inline-start: 3.4rem; }
+  .trick-area__surface--dealer-right .trick-area__current { padding-inline-end: 3.4rem; }
   .face-up-card .playing-card { --card-inline: clamp(2.9rem, 13vw, 3.7rem); }
   .face-up-card__trump-suit { inline-size: 1.55rem; font-size: 0.9rem; }
   .trick-area__plays { gap: var(--space-1); }
@@ -595,6 +604,7 @@
 @media (max-width: 23rem) {
   .game-table { grid-template-columns: minmax(0, 0.55fr) minmax(8rem, 1.6fr) minmax(0, 0.55fr); }
   .game-menu { grid-template-columns: repeat(5, 4.1rem); }
+  .player-seat--top .seat-table-stats { inset-inline-end: -2.8rem; }
 }
 
 /* Result screens replace the spatial table. Keep this definitive rule after every

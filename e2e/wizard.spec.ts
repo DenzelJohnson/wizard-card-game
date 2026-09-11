@@ -97,6 +97,21 @@ test('plays a seeded Easy match through all 15 rounds and final standings', asyn
   await expect(scoreDialog.locator('tbody')).toHaveCount(15);
 });
 
+test('starts and advances a persisted Medium match', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'desktop mode coverage');
+
+  await openFresh(page, SEED_PATH);
+  await page.getByRole('button', { name: 'Medium' }).click();
+  await waitForHumanDecision(page);
+
+  const difficulty = await page.evaluate(() => {
+    const value = localStorage.getItem('wizard-card-game/save-v1');
+    return value === null ? null : (JSON.parse(value) as { difficulty?: unknown }).difficulty;
+  });
+  expect(difficulty).toBe('medium');
+  await expect(gameState(page)).toHaveAttribute('data-phase', /choose-trump|bidding|playing/);
+});
+
 test.describe('normal-motion resume flows', () => {
   test.use({ reducedMotion: 'no-preference' });
 

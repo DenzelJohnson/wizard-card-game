@@ -24,7 +24,7 @@ export function TrickArea({
   return (
     <section className="trick-area" aria-labelledby="current-trick-heading">
       <h2 id="current-trick-heading">Current trick</h2>
-      <div className="trick-area__surface">
+      <div className={`trick-area__surface trick-area__surface--dealer-${dealerPosition}`}>
         {revealedUpCard === null ? null : (
           <div
             className={`face-up-card face-up-card--${dealerPosition}`}
