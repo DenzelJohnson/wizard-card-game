@@ -150,9 +150,8 @@ export function useWizardGame(options: WizardGameOptions = {}): WizardGameContro
             return;
           }
 
-          const choice = state.difficulty === 'medium'
-            ? chooseMediumAction(state)
-            : chooseEasyAction(state);
+          const choice =
+            state.difficulty === 'medium' ? chooseMediumAction(state) : chooseEasyAction(state);
           if (choice === null || currentStateRef.current !== state) {
             return;
           }
@@ -165,11 +164,24 @@ export function useWizardGame(options: WizardGameOptions = {}): WizardGameContro
 
           commitTransition(state, nextState);
         },
-        reducedMotion ? 0 : state.phase === 'playing' ? computerPlayMs : computerDecisionMs,
+        reducedMotion
+          ? 0
+          : state.phase === 'playing'
+            ? computerPlayMs
+            : computerDecisionMs,
       );
       return () => clearTimeout(timer);
     }
-  }, [applyAction, commitTransition, computerDecisionMs, computerPlayMs, reducedMotion, screen, state, trickResultMs]);
+  }, [
+    applyAction,
+    commitTransition,
+    computerDecisionMs,
+    computerPlayMs,
+    reducedMotion,
+    screen,
+    state,
+    trickResultMs,
+  ]);
 
   const startGame = useCallback(
     (difficulty: Difficulty = 'easy', seed?: number): void => {

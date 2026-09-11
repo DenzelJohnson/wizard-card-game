@@ -1,6 +1,13 @@
 import { legalActions } from '../game/state';
 import { winningPlay } from '../game/rules';
-import { SUITS, type Card, type GameAction, type GameState, type RngState, type Suit } from '../game/types';
+import {
+  SUITS,
+  type Card,
+  type GameAction,
+  type GameState,
+  type RngState,
+  type Suit,
+} from '../game/types';
 
 const COMPUTER_IDS = new Set(['ember', 'rowan', 'mira']);
 const SUIT_TIE_BREAK: readonly Suit[] = ['spades', 'hearts', 'clubs', 'diamonds'];
@@ -31,8 +38,14 @@ export function chooseMediumAction(
   } else if (state.phase === 'bidding') {
     const estimate = estimateBid(state.hands[playerId], state.trump, state.round);
     action = choices
-      .filter((choice): choice is Extract<GameAction, { type: 'PLACE_BID' }> => choice.type === 'PLACE_BID')
-      .sort((left, right) => Math.abs(left.bid - estimate) - Math.abs(right.bid - estimate) || left.bid - right.bid)[0];
+      .filter(
+        (choice): choice is Extract<GameAction, { type: 'PLACE_BID' }> =>
+          choice.type === 'PLACE_BID',
+      )
+      .sort(
+        (left, right) =>
+          Math.abs(left.bid - estimate) - Math.abs(right.bid - estimate) || left.bid - right.bid,
+      )[0];
   } else {
     action = choosePlay(state, choices);
   }
@@ -92,20 +105,30 @@ function choosePlay(state: GameState, choices: readonly GameAction[]): GameActio
     return undefined;
   }
   const legal = choices
-    .filter((choice): choice is Extract<GameAction, { type: 'PLAY_CARD' }> => choice.type === 'PLAY_CARD')
+    .filter(
+      (choice): choice is Extract<GameAction, { type: 'PLAY_CARD' }> =>
+        choice.type === 'PLAY_CARD',
+    )
     .map((action) => ({
       action,
       card: state.hands[playerId].find((candidate) => candidate.id === action.cardId),
     }))
-    .filter((candidate): candidate is { action: Extract<GameAction, { type: 'PLAY_CARD' }>; card: Card } => candidate.card !== undefined);
+    .filter(
+      (
+        candidate,
+      ): candidate is { action: Extract<GameAction, { type: 'PLAY_CARD' }>; card: Card } =>
+        candidate.card !== undefined,
+    );
 
   const bid = state.bids.find((record) => record.playerId === playerId)?.bid ?? 0;
   const needsTrick = state.tricksWon[playerId] < bid;
   if (state.currentTrick.length === 0) {
     return [...legal].sort((left, right) =>
       needsTrick
-        ? cardStrength(right.card, state.trump) - cardStrength(left.card, state.trump) || left.card.id.localeCompare(right.card.id)
-        : cardStrength(left.card, state.trump) - cardStrength(right.card, state.trump) || left.card.id.localeCompare(right.card.id),
+        ? cardStrength(right.card, state.trump) - cardStrength(left.card, state.trump) ||
+          left.card.id.localeCompare(right.card.id)
+        : cardStrength(left.card, state.trump) - cardStrength(right.card, state.trump) ||
+          left.card.id.localeCompare(right.card.id),
     )[0]?.action;
   }
 
@@ -121,12 +144,21 @@ function choosePlay(state: GameState, choices: readonly GameAction[]): GameActio
 
   return [...pool].sort((left, right) => {
     if (needsTrick) {
-      return cardStrength(left.card, state.trump) - cardStrength(right.card, state.trump) || left.card.id.localeCompare(right.card.id);
+      return (
+        cardStrength(left.card, state.trump) - cardStrength(right.card, state.trump) ||
+        left.card.id.localeCompare(right.card.id)
+      );
     }
     if (!left.wins && !right.wins) {
-      return cardStrength(right.card, state.trump) - cardStrength(left.card, state.trump) || left.card.id.localeCompare(right.card.id);
+      return (
+        cardStrength(right.card, state.trump) - cardStrength(left.card, state.trump) ||
+        left.card.id.localeCompare(right.card.id)
+      );
     }
-    return cardStrength(left.card, state.trump) - cardStrength(right.card, state.trump) || left.card.id.localeCompare(right.card.id);
+    return (
+      cardStrength(left.card, state.trump) - cardStrength(right.card, state.trump) ||
+      left.card.id.localeCompare(right.card.id)
+    );
   })[0]?.action;
 }
 

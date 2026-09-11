@@ -231,8 +231,10 @@ export function GameTable({
 
 export function sortHandForDisplay(hand: readonly Card[]): Card[] {
   return [...hand].sort((left, right) => {
-    const leftGroup = left.kind === 'suited' ? HAND_SUIT_ORDER[left.suit] : left.kind === 'wizard' ? 4 : 5;
-    const rightGroup = right.kind === 'suited' ? HAND_SUIT_ORDER[right.suit] : right.kind === 'wizard' ? 4 : 5;
+    const leftGroup =
+      left.kind === 'suited' ? HAND_SUIT_ORDER[left.suit] : left.kind === 'wizard' ? 4 : 5;
+    const rightGroup =
+      right.kind === 'suited' ? HAND_SUIT_ORDER[right.suit] : right.kind === 'wizard' ? 4 : 5;
     if (leftGroup !== rightGroup) return leftGroup - rightGroup;
     if (left.kind === 'suited' && right.kind === 'suited' && left.rank !== right.rank) {
       return right.rank - left.rank;
