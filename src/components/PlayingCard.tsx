@@ -42,6 +42,7 @@ const RANK_SYMBOLS: Record<Rank, string> = {
 export interface PlayingCardProps {
   readonly card: Card;
   readonly playable: boolean;
+  readonly trumpSuit?: Suit | null;
   readonly onPlay?: () => void;
   readonly faceDown?: boolean;
   readonly disabledReason?: string;
@@ -69,6 +70,7 @@ export function suitSymbol(suit: Suit): string {
 export function PlayingCard({
   card,
   playable,
+  trumpSuit = null,
   onPlay,
   faceDown = false,
   disabledReason = 'not playable',
@@ -86,7 +88,10 @@ export function PlayingCard({
   const name = cardName(card);
   const content = <CardFace card={card} />;
   const suit = card.kind === 'suited' ? card.suit : undefined;
-  const cardClassName = `playing-card playing-card--${card.kind}`;
+  const isTrump = card.kind === 'suited' && card.suit === trumpSuit;
+  const cardClassName = `playing-card playing-card--${card.kind}${
+    isTrump ? ' playing-card--trump' : ''
+  }`;
 
   if (onPlay !== undefined) {
     return (

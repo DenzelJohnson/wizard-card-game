@@ -205,6 +205,7 @@ export function GameTable({
                   key={card.id}
                   card={card}
                   playable={action !== undefined}
+                  trumpSuit={state.trump}
                   disabledReason={canPlayNow ? 'must follow suit' : 'wait for your turn'}
                   onPlay={() => {
                     if (action !== undefined) {

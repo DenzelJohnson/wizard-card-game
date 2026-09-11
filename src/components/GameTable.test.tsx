@@ -508,6 +508,22 @@ describe('GameTable', () => {
     ).toEqual(orderedCards.map((item) => item.id));
   });
 
+  it('highlights only the human cards that match the resolved trump suit', () => {
+    const state = displayState({
+      hands: {
+        ...displayState().hands,
+        human: [twoHearts, aceSpades, humanWizard, humanJester],
+      },
+      trump: 'hearts',
+    });
+    render(<GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: /Two of Hearts/ })).toHaveClass('playing-card--trump');
+    expect(screen.getByRole('button', { name: /Ace of Spades/ })).not.toHaveClass('playing-card--trump');
+    expect(screen.getByRole('button', { name: /Wizard/ })).not.toHaveClass('playing-card--trump');
+    expect(screen.getByRole('button', { name: /Jester/ })).not.toHaveClass('playing-card--trump');
+  });
+
   it('disables every human card during a computer turn and explains the phase', () => {
     const state = restrictedFollowSuitState('ember');
     const onAction = vi.fn();
