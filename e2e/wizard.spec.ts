@@ -97,7 +97,7 @@ test('plays a seeded Easy match through all 15 rounds and final standings', asyn
   await expect(scoreDialog.locator('tbody')).toHaveCount(15);
 });
 
-test('starts and advances a persisted Medium match', async ({ page }, testInfo) => {
+test('plays a persisted Medium match through all 15 rounds', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium', 'desktop mode coverage');
 
   await openFresh(page, SEED_PATH);
@@ -109,7 +109,22 @@ test('starts and advances a persisted Medium match', async ({ page }, testInfo) 
     return value === null ? null : (JSON.parse(value) as { difficulty?: unknown }).difficulty;
   });
   expect(difficulty).toBe('medium');
-  await expect(gameState(page)).toHaveAttribute('data-phase', /choose-trump|bidding|playing/);
+
+  for (let transition = 0; transition < MAX_GAME_TRANSITIONS; transition += 1) {
+    const snapshot = await readGameSnapshot(page);
+    if (snapshot.phase === 'match-result') break;
+    if (snapshot.phase === 'round-result') {
+      await page.getByRole('button', { name: 'Continue', exact: true }).click();
+      await waitForGameChange(page, snapshot.signature);
+    } else if (isHumanDecision(snapshot)) {
+      await chooseFirstHumanAction(page, snapshot);
+    } else {
+      await waitForGameChange(page, snapshot.signature);
+    }
+  }
+
+  await expect(gameState(page)).toHaveAttribute('data-phase', 'match-result');
+  await expect(page.getByRole('heading', { name: 'Match complete' })).toBeVisible();
 });
 
 test.describe('normal-motion resume flows', () => {
