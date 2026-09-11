@@ -7,6 +7,7 @@ import type { Difficulty, GameAction, GameState } from '../game/types';
 import { clearGame, loadGame, saveGame, type StorageLike } from '../storage/save';
 
 const COMPUTER_DECISION_DELAY_MS = 450;
+const COMPUTER_PLAY_DELAY_MS = 700;
 const TRICK_RESULT_DELAY_MS = 900;
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
@@ -24,6 +25,7 @@ export interface WizardGameOptions {
   readonly matchMedia?: (query: string) => MotionQueryLike | null;
   readonly timings?: {
     readonly computerDecisionMs?: number;
+    readonly computerPlayMs?: number;
     readonly trickResultMs?: number;
   };
 }
@@ -50,6 +52,9 @@ export function useWizardGame(options: WizardGameOptions = {}): WizardGameContro
   );
   const [computerDecisionMs] = useState(
     () => options.timings?.computerDecisionMs ?? COMPUTER_DECISION_DELAY_MS,
+  );
+  const [computerPlayMs] = useState(
+    () => options.timings?.computerPlayMs ?? COMPUTER_PLAY_DELAY_MS,
   );
   const [trickResultMs] = useState(
     () => options.timings?.trickResultMs ?? TRICK_RESULT_DELAY_MS,
@@ -160,11 +165,11 @@ export function useWizardGame(options: WizardGameOptions = {}): WizardGameContro
 
           commitTransition(state, nextState);
         },
-        reducedMotion ? 0 : computerDecisionMs,
+        reducedMotion ? 0 : state.phase === 'playing' ? computerPlayMs : computerDecisionMs,
       );
       return () => clearTimeout(timer);
     }
-  }, [applyAction, commitTransition, computerDecisionMs, reducedMotion, screen, state, trickResultMs]);
+  }, [applyAction, commitTransition, computerDecisionMs, computerPlayMs, reducedMotion, screen, state, trickResultMs]);
 
   const startGame = useCallback(
     (difficulty: Difficulty = 'easy', seed?: number): void => {

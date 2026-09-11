@@ -143,6 +143,12 @@ function computerDecisionState(): GameState {
   );
 }
 
+function computerPlayingState(): GameState {
+  return reachableState(
+    (state) => state.phase === 'playing' && state.activePlayerId !== null && state.activePlayerId !== 'human',
+  );
+}
+
 function computerDecisionBeforeHumanState(): GameState {
   return reachableState((state) => {
     const choice = chooseEasyAction(state);
@@ -422,6 +428,21 @@ describe('useWizardGame', () => {
     expect(result.current.state).toEqual(expected);
     expect(result.current.state?.rng).toEqual(choice.rng);
     expect(storage.setAttempts).toBe(1);
+  });
+
+  it('waits 700ms before each computer card play', () => {
+    const saved = computerPlayingState();
+    const storage = new MemoryStorage(saved);
+    const { result } = renderHook(() => useWizardGame({ storage }));
+    act(() => result.current.continueGame());
+    const current = result.current.state as GameState;
+
+    act(() => vi.advanceTimersByTime(699));
+    expect(result.current.state).toBe(current);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.state).not.toBe(current);
+    expect(result.current.state?.currentTrick.length).toBe(current.currentTrick.length + 1);
   });
 
   it('routes Medium matches through the rule-based strategy without consuming RNG', () => {
