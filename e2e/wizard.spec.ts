@@ -127,7 +127,7 @@ test('plays a persisted Medium match through all 15 rounds', async ({ page }, te
   await expect(page.getByRole('heading', { name: 'Match complete' })).toBeVisible();
 });
 
-test('arranges four player-owned trick slots as a cross', async ({ page }) => {
+test('arranges four enlarged player-owned trick slots as a cross', async ({ page }, testInfo) => {
   await openFresh(page, SEED_PATH);
   await page.getByRole('button', { name: 'Easy' }).click();
   await waitForHumanDecision(page);
@@ -149,6 +149,15 @@ test('arranges four player-owned trick slots as a cross', async ({ page }) => {
   expect(centers.mira.x).toBeGreaterThan(centers.rowan.x);
   expect(centers.human.y).toBeGreaterThan(centers.ember.y);
   expect(centers.human.y).toBeGreaterThan(centers.mira.y);
+
+  const slotSize = await page.locator('.trick-play__empty').first().evaluate((slot) => {
+    const rect = slot.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+  const minimumCardWidth = testInfo.project.name === 'desktop-chromium' ? 150 : 100;
+
+  expect(slotSize.width).toBeGreaterThanOrEqual(minimumCardWidth);
+  expect(slotSize.height).toBeGreaterThanOrEqual(minimumCardWidth * 1.4);
 });
 
 test('withholds bids until the human bids and then parks the reveal in the upper-left', async ({ page }) => {

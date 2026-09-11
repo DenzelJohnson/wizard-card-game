@@ -313,8 +313,8 @@
 
 .trick-area__plays {
   position: relative;
-  inline-size: clamp(15rem, 32vw, 25rem);
-  block-size: clamp(12rem, 25vw, 18rem);
+  inline-size: clamp(30rem, 64vw, 50rem);
+  block-size: clamp(26rem, 52vw, 40rem);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -332,7 +332,7 @@
 .trick-play--left { inset-block-start: 50%; inset-inline-start: 0; transform: translateY(-50%); }
 
 .trick-play .playing-card,
-.trick-play__empty { --card-inline: clamp(3.8rem, 5.5vw, 5.2rem); }
+.trick-play__empty { --card-inline: clamp(7.6rem, 11vw, 10.4rem); }
 
 .trick-play__empty {
   display: block;
@@ -622,11 +622,11 @@
   .face-up-card--table-corner { inset-block-start: 12rem; inset-inline-start: 4.25rem; }
   .face-up-card__trump-suit { inline-size: 1.55rem; font-size: 0.9rem; }
   .trick-area__plays {
-    inline-size: min(100%, 15rem);
-    block-size: clamp(9.4rem, 48vw, 12rem);
+    inline-size: min(100%, 30rem);
+    block-size: clamp(18.8rem, 96vw, 24rem);
   }
   .trick-play .playing-card,
-  .trick-play__empty { --card-inline: clamp(2.75rem, 12vw, 3.6rem); }
+  .trick-play__empty { --card-inline: clamp(6.25rem, 24vw, 7.2rem); }
   .trick-play__name { transform: translateY(1.15rem); }
 
   .human-area { grid-template-columns: 1fr; gap: var(--space-2); }
