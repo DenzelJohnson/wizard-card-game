@@ -1,5 +1,6 @@
 import type { Card, PlayedCard, PlayerMetadata, Suit } from '../game/types';
 import { cardName, PlayingCard, suitName, suitSymbol } from './PlayingCard';
+import type { SeatPosition } from './PlayerSeat';
 
 export interface TrickAreaProps {
   readonly plays: readonly PlayedCard[];
@@ -7,6 +8,7 @@ export interface TrickAreaProps {
   readonly revealedUpCard: Card | null;
   readonly trump: Suit | null;
   readonly dealerChoosingTrump: boolean;
+  readonly dealerPosition: SeatPosition;
 }
 
 export function TrickArea({
@@ -15,6 +17,7 @@ export function TrickArea({
   revealedUpCard,
   trump,
   dealerChoosingTrump,
+  dealerPosition,
 }: TrickAreaProps) {
   const playerNames = new Map(players.map((player) => [player.id, player.name]));
 
@@ -24,7 +27,7 @@ export function TrickArea({
       <div className="trick-area__surface">
         {revealedUpCard === null ? null : (
           <div
-            className="face-up-card"
+            className={`face-up-card face-up-card--${dealerPosition}`}
             aria-label={faceUpCardLabel(revealedUpCard, trump, dealerChoosingTrump)}
           >
             <PlayingCard card={revealedUpCard} playable={false} />

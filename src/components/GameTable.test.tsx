@@ -159,7 +159,7 @@ describe('GameTable', () => {
     expect(container.innerHTML).not.toMatch(/secret-/i);
   });
 
-  it('shows all seats and opponent counts without leaking hidden faces or IDs', () => {
+  it('shows all seats without a visible opponent card count or hidden faces and IDs', () => {
     const state = displayState();
     const { container } = render(
       <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
@@ -171,6 +171,9 @@ describe('GameTable', () => {
     expect(screen.getByLabelText('Ember has 3 hidden cards')).toBeInTheDocument();
     expect(screen.getByLabelText('Rowan has 2 hidden cards')).toBeInTheDocument();
     expect(screen.getByLabelText('Mira has 1 hidden card')).toBeInTheDocument();
+    expect(screen.queryByText('3 cards')).not.toBeInTheDocument();
+    expect(screen.queryByText('2 cards')).not.toBeInTheDocument();
+    expect(screen.queryByText('1 card')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Ace of Hearts/ })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Your hand, 1 card' })).toBeInTheDocument();
 
@@ -180,6 +183,29 @@ describe('GameTable', () => {
     expect(screen.queryByText(/^Wizard$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Jester$/)).not.toBeInTheDocument();
     expect(container.querySelector('[data-kind="wizard"], [data-kind="jester"]')).toBeNull();
+  });
+
+  it('places enlarged opponent bid and trick counters on the table outside each seat panel', () => {
+    const state = displayState({
+      bids: [
+        { playerId: 'ember', bid: 2 },
+        { playerId: 'rowan', bid: 1 },
+        { playerId: 'mira', bid: 0 },
+      ],
+    });
+    const { container } = render(
+      <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
+    );
+
+    for (const [name, bid, tricks] of [['Ember', '2', '0'], ['Rowan', '1', '2'], ['Mira', '0', '0']]) {
+      const seat = screen.getByRole('region', { name: `${name} seat` });
+      const counters = within(seat).getByLabelText(`${name} round stats`);
+      expect(counters).toHaveClass('seat-table-stats');
+      expect(counters).toHaveTextContent(`Bid${bid}`);
+      expect(counters).toHaveTextContent(`Tricks${tricks}`);
+      expect(within(seat).getByText(/Score:/)).toBeInTheDocument();
+    }
+    expect(container.querySelector('.seat-marker--dealer')).toHaveClass('seat-marker--dealer');
   });
 
   it('leaves the top-left clear and shows the face-up trump card on the felt', () => {
@@ -199,7 +225,27 @@ describe('GameTable', () => {
     expect(screen.queryByText(/Trump:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Up card:/)).not.toBeInTheDocument();
     const reveal = screen.getByLabelText('Face-up card: Ten of Hearts. Hearts are trump.');
+    expect(reveal).toHaveClass('face-up-card--top');
     expect(within(reveal).getByRole('img', { name: 'Ten of Hearts' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['ember', 'left'],
+    ['rowan', 'top'],
+    ['mira', 'right'],
+    ['human', 'bottom'],
+  ] as const)('positions the face-up card in front of the %s dealer', (dealerId, position) => {
+    render(
+      <GameTable
+        state={displayState({ dealerId })}
+        legalActions={legalActions(displayState({ dealerId }))}
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Face-up card: Ten of Hearts. Hearts are trump.')).toHaveClass(
+      `face-up-card--${position}`,
+    );
   });
 
   it('renders exactly the engine-provided human bid actions and emits the chosen payload', () => {

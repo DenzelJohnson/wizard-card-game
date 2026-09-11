@@ -158,6 +158,7 @@ export function GameTable({
         revealedUpCard={state.revealedUpCard}
         trump={state.trump}
         dealerChoosingTrump={state.phase === 'choose-trump' && state.trump === null}
+        dealerPosition={SEAT_POSITIONS[state.dealerId]}
       />
 
       {bidActions.length > 0 || trumpActions.length > 0 ? (
@@ -283,6 +284,7 @@ function Seat({
       leader={leaderId === player.id}
       winner={trickWinnerId === player.id}
       hiddenCardCount={hiddenCardCount}
+      externalRoundStats
     />
   );
 }

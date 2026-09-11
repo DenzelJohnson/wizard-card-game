@@ -367,7 +367,7 @@ legend {
 
 .mode-selector__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
@@ -404,6 +404,17 @@ button.mode-card--easy:hover,
 button.mode-card--easy:focus-visible {
   transform: translateY(-0.25rem);
 }
+
+.mode-card--medium {
+  border-color: #8ccdb2;
+  background:
+    radial-gradient(circle at 50% 15%, rgb(255 255 255 / 76%), transparent 35%),
+    linear-gradient(150deg, #edf4d5, #add0a1);
+  box-shadow: var(--shadow-soft), 0 0 1.8rem rgb(74 174 133 / 18%);
+}
+
+button.mode-card--medium:hover,
+button.mode-card--medium:focus-visible { transform: translateY(-0.25rem); }
 
 .mode-card--locked {
   color: #3d3441;

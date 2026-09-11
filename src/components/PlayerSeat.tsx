@@ -13,6 +13,7 @@ export interface PlayerSeatProps {
   readonly leader: boolean;
   readonly winner: boolean;
   readonly hiddenCardCount?: number;
+  readonly externalRoundStats?: boolean;
 }
 
 export function PlayerSeat({
@@ -26,6 +27,7 @@ export function PlayerSeat({
   leader,
   winner,
   hiddenCardCount,
+  externalRoundStats = false,
 }: PlayerSeatProps) {
   const stateClasses = [
     active ? 'player-seat--active' : '',
@@ -45,8 +47,12 @@ export function PlayerSeat({
       <h2 className="player-seat__name">{player.name}</h2>
       <p className="seat-summary">
         <span className="seat-summary__score">Score: {score}</span>{' '}
-        <span className="seat-summary__bid">Bid: {bid ?? '—'}</span>{' '}
-        <span className="seat-summary__tricks">Tricks: {tricksWon}</span>
+        {externalRoundStats ? null : (
+          <>
+            <span className="seat-summary__bid">Bid: {bid ?? '—'}</span>{' '}
+            <span className="seat-summary__tricks">Tricks: {tricksWon}</span>
+          </>
+        )}
       </p>
       {dealer || active || leader || winner ? (
         <p className="seat-markers">
@@ -64,9 +70,6 @@ export function PlayerSeat({
             hiddenCardCount === 1 ? 'card' : 'cards'
           }`}
         >
-          <span className="hidden-card-count" aria-hidden="true">
-            {hiddenCardCount} {hiddenCardCount === 1 ? 'card' : 'cards'}
-          </span>
           {Array.from({ length: hiddenCardCount }, (_, index) => (
             <span key={index} className="playing-card playing-card--back" aria-hidden="true">
               <span className="playing-card__back-ornament">
@@ -74,6 +77,12 @@ export function PlayerSeat({
               </span>
             </span>
           ))}
+        </div>
+      ) : null}
+      {externalRoundStats ? (
+        <div className="seat-table-stats" aria-label={`${player.name} round stats`}>
+          <span><small>Bid</small><strong>{bid ?? '—'}</strong></span>
+          <span><small>Tricks</small><strong>{tricksWon}</strong></span>
         </div>
       ) : null}
     </section>

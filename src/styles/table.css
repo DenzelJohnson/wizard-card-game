@@ -165,7 +165,13 @@
   text-transform: uppercase;
 }
 
-.seat-marker--dealer { color: #fff0b9; background: #654a1f; }
+.seat-marker--dealer {
+  padding: 0.42rem 1rem;
+  color: #fff0b9;
+  background: #654a1f;
+  font-size: 1.2rem;
+  letter-spacing: 0.12em;
+}
 .seat-marker--active { color: #d5ffec; background: #1d604a; }
 .seat-marker--leader { color: #d9e2ff; background: #2b3d75; }
 .seat-marker--winner { color: #ffe6ed; background: #7a2538; }
@@ -193,22 +199,29 @@
   margin-inline: auto;
 }
 
-.hidden-card-count {
-  z-index: 20;
-  grid-column: 1 / -1;
-  grid-row: 1;
-  align-self: end;
-  justify-self: center;
-  margin-block-end: -0.15rem;
-  padding: 0.15rem 0.42rem;
-  border-radius: var(--radius-round);
-  color: var(--color-night);
-  background: var(--color-gold-bright);
-  font-size: 0.64rem;
-  font-weight: 850;
+.hidden-card-stack > .playing-card--back { grid-row: 1; }
+
+.seat-table-stats {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  gap: var(--space-3);
+  color: var(--color-cream);
+  filter: drop-shadow(0 0.2rem 0.25rem rgb(0 0 0 / 80%));
 }
 
-.hidden-card-stack > .playing-card--back { grid-row: 1; }
+.seat-table-stats > span { display: grid; place-items: center; line-height: 1; }
+.seat-table-stats small {
+  color: var(--color-gold-bright);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.seat-table-stats strong { font-family: var(--font-display); font-size: clamp(1.55rem, 2.7vw, 2.25rem); }
+.player-seat--left .seat-table-stats { inset-block-start: 50%; inset-inline-end: -5.2rem; transform: translateY(-50%); }
+.player-seat--right .seat-table-stats { inset-block-start: 50%; inset-inline-start: -5.2rem; transform: translateY(-50%); }
+.player-seat--top .seat-table-stats { inset-block-end: -3.8rem; inset-inline-start: 50%; transform: translateX(-50%); }
 
 .trick-area {
   z-index: var(--z-table);
@@ -237,15 +250,16 @@
   position: relative;
   display: grid;
   inline-size: 100%;
-  grid-template-columns: auto minmax(0, 1fr);
+  min-block-size: 9.5rem;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: clamp(var(--space-2), 2vw, var(--space-4));
 }
 
 .trick-area__current {
   display: grid;
   min-inline-size: 0;
   place-items: center;
+  padding: 2.3rem 4.8rem;
 }
 
 .trick-area__current > p {
@@ -255,11 +269,16 @@
 }
 
 .face-up-card {
-  position: relative;
+  position: absolute;
+  z-index: 3;
   display: grid;
   place-items: center;
-  transform: rotate(-5deg);
 }
+
+.face-up-card--top { inset-block-start: 0; inset-inline-start: 50%; transform: translate(-50%, -18%) rotate(-3deg); }
+.face-up-card--right { inset-block-start: 50%; inset-inline-end: 0; transform: translate(18%, -50%) rotate(5deg); }
+.face-up-card--bottom { inset-block-end: 0; inset-inline-start: 50%; transform: translate(-50%, 18%) rotate(3deg); }
+.face-up-card--left { inset-block-start: 50%; inset-inline-start: 0; transform: translate(-18%, -50%) rotate(-5deg); }
 
 .face-up-card .playing-card { --card-inline: clamp(3.8rem, 5.5vw, 5.2rem); }
 
@@ -524,6 +543,14 @@
 
   .seat-markers { margin: var(--space-1) 0; }
   .seat-marker { padding: 0.08rem 0.3rem; font-size: 0.52rem; }
+  .seat-marker--dealer { padding: 0.3rem 0.62rem; font-size: 0.92rem; }
+
+  .seat-table-stats { gap: var(--space-1); }
+  .seat-table-stats small { font-size: 0.5rem; }
+  .seat-table-stats strong { font-size: 1.25rem; }
+  .player-seat--left .seat-table-stats { inset-inline-end: -3.3rem; }
+  .player-seat--right .seat-table-stats { inset-inline-start: -3.3rem; }
+  .player-seat--top .seat-table-stats { inset-block-end: -2.8rem; }
 
   .hidden-card-stack {
     inline-size: min(100%, 5.5rem);
@@ -536,12 +563,7 @@
     min-block-size: 6.5rem;
     grid-template-columns: 1fr;
   }
-  .face-up-card {
-    position: absolute;
-    inset-inline-start: 0.2rem;
-    inset-block-end: 0.2rem;
-    z-index: 3;
-  }
+  .trick-area__current { padding: 2rem 3rem; }
   .face-up-card .playing-card { --card-inline: clamp(2.9rem, 13vw, 3.7rem); }
   .face-up-card__trump-suit { inline-size: 1.55rem; font-size: 0.9rem; }
   .trick-area__plays { gap: var(--space-1); }
