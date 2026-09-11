@@ -24,8 +24,8 @@ describe('HomeScreen', () => {
     const easyButton = screen.getByRole('button', { name: 'Easy' });
 
     expect(easyButton).not.toHaveAttribute('aria-label');
-    expect(easyButton).toHaveAttribute('aria-describedby', 'easy-mode-description');
-    expect(easyButton).toHaveAccessibleDescription('Friendly rivals · Random legal moves');
+    expect(easyButton).not.toHaveAttribute('aria-describedby');
+    expect(easyButton).toHaveTextContent(/^Easy$/);
     fireEvent.click(easyButton);
 
     expect(props.onStart).toHaveBeenCalledWith('easy');
@@ -36,20 +36,22 @@ describe('HomeScreen', () => {
     const mediumButton = screen.getByRole('button', { name: 'Medium' });
 
     expect(mediumButton).toBeEnabled();
-    expect(mediumButton).toHaveAccessibleDescription(/strategic rule-based rivals/i);
+    expect(mediumButton).not.toHaveAttribute('aria-describedby');
+    expect(mediumButton).toHaveTextContent(/^Medium$/);
     fireEvent.click(mediumButton);
 
     expect(props.onStart).toHaveBeenCalledWith('medium');
   });
 
-  it('shows Hard as a described native disabled Beta option', () => {
+  it('shows only the Hard name, Beta badge, and Locked status', () => {
     const props = renderHome();
     const hardButton = screen.getByRole('button', { name: /hard.*beta/i });
-    const descriptionId = hardButton.getAttribute('aria-describedby');
 
     expect(hardButton).toBeDisabled();
-    expect(descriptionId).toBeTruthy();
-    expect(document.getElementById(descriptionId as string)).toHaveTextContent(/beta.*coming soon/i);
+    expect(hardButton).not.toHaveAttribute('aria-describedby');
+    expect(hardButton).toHaveTextContent(/^HardBetaLocked$/);
+    expect(screen.queryByText(/friendly rivals|strategic rule-based|sharper challenge|coming soon/i))
+      .not.toBeInTheDocument();
 
     fireEvent.click(hardButton);
     expect(props.onStart).not.toHaveBeenCalled();

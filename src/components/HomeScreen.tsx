@@ -11,11 +11,8 @@ export interface HomeScreenProps {
   readonly onContinue: () => void;
 }
 
-const HARD_MODE_DESCRIPTION_ID = 'hard-mode-description';
 const EASY_MODE_TITLE_ID = 'easy-mode-title';
-const EASY_MODE_DESCRIPTION_ID = 'easy-mode-description';
 const MEDIUM_MODE_TITLE_ID = 'medium-mode-title';
-const MEDIUM_MODE_DESCRIPTION_ID = 'medium-mode-description';
 const NEW_GAME_DIALOG_TITLE_ID = 'new-game-dialog-title';
 const NEW_GAME_DIALOG_DESCRIPTION_ID = 'new-game-dialog-description';
 
@@ -79,47 +76,29 @@ export function HomeScreen({
               className="mode-card mode-card--easy"
               type="button"
               aria-labelledby={EASY_MODE_TITLE_ID}
-              aria-describedby={EASY_MODE_DESCRIPTION_ID}
               onClick={(event) => startGame('easy', event.currentTarget)}
             >
-              <span className="mode-card__icon" aria-hidden="true">♣</span>
               <span id={EASY_MODE_TITLE_ID} className="mode-card__title">Easy</span>
-              <span id={EASY_MODE_DESCRIPTION_ID} className="mode-card__description">
-                Friendly rivals · Random legal moves
-              </span>
-              <span className="mode-card__cta" aria-hidden="true">Enter the tavern →</span>
             </button>
             <button
               className="mode-card mode-card--medium"
               type="button"
               aria-labelledby={MEDIUM_MODE_TITLE_ID}
-              aria-describedby={MEDIUM_MODE_DESCRIPTION_ID}
               onClick={(event) => startGame('medium', event.currentTarget)}
             >
-              <span className="mode-card__icon" aria-hidden="true">♥</span>
               <span id={MEDIUM_MODE_TITLE_ID} className="mode-card__title">Medium</span>
-              <span id={MEDIUM_MODE_DESCRIPTION_ID} className="mode-card__description">
-                Strategic rule-based rivals · No learning
-              </span>
-              <span className="mode-card__cta" aria-hidden="true">Accept the challenge →</span>
             </button>
             <button
               className="mode-card mode-card--locked"
               type="button"
               disabled
               aria-label="Hard — Beta"
-              aria-describedby={HARD_MODE_DESCRIPTION_ID}
             >
-              <span className="mode-card__icon" aria-hidden="true">♠</span>
               <span className="mode-card__title">Hard</span>
               <span className="beta-badge">Beta</span>
-              <span className="mode-card__description">A sharper challenge is being conjured</span>
-              <span className="mode-card__cta" aria-hidden="true">Locked</span>
+              <span className="mode-card__status" aria-hidden="true">Locked</span>
             </button>
           </div>
-          <p id={HARD_MODE_DESCRIPTION_ID} className="mode-selector__note">
-            Hard mode is in Beta and coming soon.
-          </p>
         </section>
         <div className="home-screen__secondary-actions">
           <button

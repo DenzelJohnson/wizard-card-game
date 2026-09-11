@@ -427,17 +427,6 @@ button.mode-card--medium:focus-visible { transform: translateY(-0.25rem); }
   opacity: 1;
 }
 
-.mode-card__icon {
-  color: var(--color-emerald);
-  font-family: var(--font-display);
-  font-size: 2rem;
-  line-height: 1;
-}
-
-.mode-card--locked .mode-card__icon {
-  color: var(--color-burgundy-dark);
-}
-
 .mode-card__title {
   font-family: var(--font-display);
   font-size: 1.65rem;
@@ -445,13 +434,7 @@ button.mode-card--medium:focus-visible { transform: translateY(-0.25rem); }
   line-height: 1;
 }
 
-.mode-card__description {
-  max-inline-size: 14rem;
-  color: var(--color-ink-soft);
-  font-size: 0.84rem;
-}
-
-.mode-card__cta {
+.mode-card__status {
   margin-block-start: var(--space-2);
   color: var(--color-burgundy-dark);
   font-size: 0.76rem;
@@ -473,12 +456,6 @@ button.mode-card--medium:focus-visible { transform: translateY(-0.25rem); }
   font-weight: 850;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.mode-selector__note {
-  margin: var(--space-3) 0 0;
-  color: #dbc7b3;
-  font-size: 0.78rem;
 }
 
 .home-screen__secondary-actions {
