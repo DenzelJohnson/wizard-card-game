@@ -267,12 +267,6 @@
 .trick-area__surface--dealer-left .trick-area__current { padding-inline-start: 5.4rem; }
 .trick-area__surface--dealer-right .trick-area__current { padding-inline-end: 5.4rem; }
 
-.trick-area__current > p {
-  margin: 0;
-  color: rgb(255 244 216 / 68%);
-  font-size: 0.8rem;
-}
-
 .face-up-card {
   position: absolute;
   z-index: 3;
@@ -307,16 +301,37 @@
 }
 
 .trick-area__plays {
-  display: grid;
-  grid-template-columns: repeat(2, auto);
-  gap: var(--space-2) var(--space-4);
-  align-self: start;
+  position: relative;
+  inline-size: clamp(15rem, 32vw, 25rem);
+  block-size: clamp(12rem, 25vw, 18rem);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.trick-play { display: grid; justify-items: center; }
+.trick-play {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+}
+
+.trick-play--top { inset-block-start: 0; inset-inline-start: 50%; transform: translateX(-50%); }
+.trick-play--right { inset-block-start: 50%; inset-inline-end: 0; transform: translateY(-50%); }
+.trick-play--bottom { inset-block-end: 0; inset-inline-start: 50%; transform: translateX(-50%); }
+.trick-play--left { inset-block-start: 50%; inset-inline-start: 0; transform: translateY(-50%); }
+
+.trick-play .playing-card,
+.trick-play__empty { --card-inline: clamp(3.8rem, 5.5vw, 5.2rem); }
+
+.trick-play__empty {
+  display: block;
+  inline-size: var(--card-inline);
+  aspect-ratio: 5 / 7;
+  border: 0.12rem dashed rgb(240 203 114 / 48%);
+  border-radius: clamp(0.45rem, 1vw, 0.72rem);
+  background: rgb(5 30 27 / 34%);
+  box-shadow: inset 0 0 1rem rgb(0 0 0 / 24%);
+}
 
 .trick-play__name {
   z-index: 2;
@@ -568,14 +583,20 @@
     min-block-size: 6.5rem;
     grid-template-columns: 1fr;
   }
-  .trick-area__current { padding: 2rem 3rem; }
+  .trick-area__current { inline-size: 100%; padding: 2rem 0; }
   .trick-area__surface--dealer-top .trick-area__current { padding-block-start: 4rem; }
   .trick-area__surface--dealer-bottom .trick-area__current { padding-block-end: 4rem; }
   .trick-area__surface--dealer-left .trick-area__current { padding-inline-start: 3.4rem; }
   .trick-area__surface--dealer-right .trick-area__current { padding-inline-end: 3.4rem; }
   .face-up-card .playing-card { --card-inline: clamp(2.9rem, 13vw, 3.7rem); }
   .face-up-card__trump-suit { inline-size: 1.55rem; font-size: 0.9rem; }
-  .trick-area__plays { gap: var(--space-1); }
+  .trick-area__plays {
+    inline-size: min(100%, 15rem);
+    block-size: clamp(9.4rem, 48vw, 12rem);
+  }
+  .trick-play .playing-card,
+  .trick-play__empty { --card-inline: clamp(2.75rem, 12vw, 3.6rem); }
+  .trick-play__name { transform: translateY(1.15rem); }
 
   .human-area { grid-template-columns: 1fr; gap: var(--space-2); }
 

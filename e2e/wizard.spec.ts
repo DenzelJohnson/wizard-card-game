@@ -127,6 +127,30 @@ test('plays a persisted Medium match through all 15 rounds', async ({ page }, te
   await expect(page.getByRole('heading', { name: 'Match complete' })).toBeVisible();
 });
 
+test('arranges four player-owned trick slots as a cross', async ({ page }) => {
+  await openFresh(page, SEED_PATH);
+  await page.getByRole('button', { name: 'Easy' }).click();
+  await waitForHumanDecision(page);
+
+  const centers = await page.locator('[data-trick-player]').evaluateAll((slots) =>
+    Object.fromEntries(slots.map((slot) => {
+      const rect = slot.getBoundingClientRect();
+      return [slot.getAttribute('data-trick-player'), {
+        x: rect.x + rect.width / 2,
+        y: rect.y + rect.height / 2,
+      }];
+    })),
+  ) as Record<'human' | 'ember' | 'rowan' | 'mira', { x: number; y: number }>;
+
+  expect(Object.keys(centers)).toHaveLength(4);
+  expect(centers.rowan.y).toBeLessThan(centers.ember.y);
+  expect(centers.rowan.y).toBeLessThan(centers.mira.y);
+  expect(centers.ember.x).toBeLessThan(centers.rowan.x);
+  expect(centers.mira.x).toBeGreaterThan(centers.rowan.x);
+  expect(centers.human.y).toBeGreaterThan(centers.ember.y);
+  expect(centers.human.y).toBeGreaterThan(centers.mira.y);
+});
+
 test.describe('normal-motion resume flows', () => {
   test.use({ reducedMotion: 'no-preference' });
 

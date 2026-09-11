@@ -248,6 +248,56 @@ describe('GameTable', () => {
     );
   });
 
+  it('renders four fixed player-owned card slots in a cross and fills them by player identity', () => {
+    const state = displayState({
+      phase: 'playing',
+      currentTrick: [
+        {
+          playerId: 'mira',
+          card: { id: 'played-mira-heart-seven', kind: 'suited', suit: 'hearts', rank: 7 },
+        },
+        { playerId: 'ember', card: { id: 'played-ember-wizard', kind: 'wizard' } },
+      ],
+    });
+    const { container } = render(
+      <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
+    );
+
+    const slots = within(screen.getByRole('region', { name: 'Current trick' })).getAllByRole(
+      'listitem',
+    );
+    expect(slots).toHaveLength(4);
+
+    const expectedSlots = [
+      ['Ember', 'left', 'Wizard'],
+      ['Rowan', 'top', null],
+      ['Mira', 'right', 'Seven of Hearts'],
+      ['You', 'bottom', null],
+    ] as const;
+
+    for (const [name, position, cardName] of expectedSlots) {
+      const slot = screen.getByRole('listitem', {
+        name: cardName === null ? `${name} has not played` : `${name} played ${cardName}`,
+      });
+      expect(slot).toHaveClass(`trick-play--${position}`);
+      expect(within(slot).getByText(name)).toBeInTheDocument();
+      if (cardName === null) {
+        expect(within(slot).queryByRole('img')).not.toBeInTheDocument();
+      } else {
+        expect(within(slot).getByRole('img')).toHaveAccessibleName(cardName);
+      }
+    }
+
+    expect(container.querySelector('[data-trick-player="ember"] [data-card-id]')).toHaveAttribute(
+      'data-card-id',
+      'played-ember-wizard',
+    );
+    expect(container.querySelector('[data-trick-player="mira"] [data-card-id]')).toHaveAttribute(
+      'data-card-id',
+      'played-mira-heart-seven',
+    );
+  });
+
   it('renders exactly the engine-provided human bid actions and emits the chosen payload', () => {
     const state = findDealtState(
       (candidate) => candidate.phase === 'bidding' && candidate.activePlayerId === 'human',

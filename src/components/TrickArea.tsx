@@ -1,4 +1,4 @@
-import type { Card, PlayedCard, PlayerMetadata, Suit } from '../game/types';
+import type { Card, PlayedCard, PlayerId, PlayerMetadata, Suit } from '../game/types';
 import { cardName, PlayingCard, suitName, suitSymbol } from './PlayingCard';
 import type { SeatPosition } from './PlayerSeat';
 
@@ -11,6 +11,13 @@ export interface TrickAreaProps {
   readonly dealerPosition: SeatPosition;
 }
 
+const TRICK_SLOT_POSITIONS: Readonly<Record<PlayerId, SeatPosition>> = {
+  human: 'bottom',
+  ember: 'left',
+  rowan: 'top',
+  mira: 'right',
+};
+
 export function TrickArea({
   plays,
   players,
@@ -19,7 +26,7 @@ export function TrickArea({
   dealerChoosingTrump,
   dealerPosition,
 }: TrickAreaProps) {
-  const playerNames = new Map(players.map((player) => [player.id, player.name]));
+  const playsByPlayer = new Map(plays.map((play) => [play.playerId, play]));
 
   return (
     <section className="trick-area" aria-labelledby="current-trick-heading">
@@ -39,23 +46,32 @@ export function TrickArea({
           </div>
         )}
         <div className="trick-area__current">
-          {plays.length === 0 ? (
-            <p>No cards played yet.</p>
-          ) : (
-            <ol className="trick-area__plays">
-              {plays.map((play, index) => (
+          <ul className="trick-area__plays" aria-label="Player card slots">
+            {players.map((player) => {
+              const play = playsByPlayer.get(player.id);
+              const position = TRICK_SLOT_POSITIONS[player.id];
+
+              return (
                 <li
-                  key={`${index}-${play.playerId}-${play.card.id}`}
-                  className={`trick-play trick-play--${play.playerId}`}
+                  key={player.id}
+                  className={`trick-play trick-play--${player.id} trick-play--${position}`}
+                  data-trick-player={player.id}
+                  aria-label={
+                    play === undefined
+                      ? `${player.name} has not played`
+                      : `${player.name} played ${cardName(play.card)}`
+                  }
                 >
-                  <span className="trick-play__name">
-                    {playerNames.get(play.playerId) ?? play.playerId}
-                  </span>
-                  <PlayingCard card={play.card} playable={false} />
+                  <span className="trick-play__name" aria-hidden="true">{player.name}</span>
+                  {play === undefined ? (
+                    <span className="trick-play__empty" aria-hidden="true" />
+                  ) : (
+                    <PlayingCard card={play.card} playable={false} />
+                  )}
                 </li>
-              ))}
-            </ol>
-          )}
+              );
+            })}
+          </ul>
         </div>
       </div>
     </section>
