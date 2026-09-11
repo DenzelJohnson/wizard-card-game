@@ -138,6 +138,12 @@ describe('RoundSummary', () => {
     expect(ember).toHaveTextContent('−10');
     expect(ember).toHaveTextContent('Total −20');
 
+    expect(
+      within(screen.getByRole('list', { name: 'Round 2 scores' }))
+        .getAllByRole('listitem')
+        .map((item) => item.getAttribute('aria-label')),
+    ).toEqual(['You', 'Rowan', 'Ember', 'Mira']);
+
     expect(screen.queryByText(/Bid \d/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Won \d/)).not.toBeInTheDocument();
     expect(screen.queryByText(/[×=]/)).not.toBeInTheDocument();

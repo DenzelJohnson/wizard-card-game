@@ -13,6 +13,9 @@ export function RoundSummary({ state, onContinue }: RoundSummaryProps) {
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const record = state.roundScores.at(-1);
   const roundNumber = record?.round ?? state.round;
+  const rankedPlayers = record === undefined
+    ? []
+    : [...record.players].sort((left, right) => right.cumulative - left.cumulative);
 
   useEffect(() => {
     continueButtonRef.current?.focus();
@@ -25,7 +28,7 @@ export function RoundSummary({ state, onContinue }: RoundSummaryProps) {
         <p>No round score is available.</p>
       ) : (
         <ul className="round-summary__scores" aria-label={`Round ${roundNumber} scores`}>
-          {record.players.map((score) => {
+          {rankedPlayers.map((score) => {
             const name = state.players.find(({ id }) => id === score.playerId)?.name ?? score.playerId;
             return (
               <li
