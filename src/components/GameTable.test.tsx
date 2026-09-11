@@ -185,7 +185,38 @@ describe('GameTable', () => {
     expect(container.querySelector('[data-kind="wizard"], [data-kind="jester"]')).toBeNull();
   });
 
-  it('places enlarged opponent bid and trick counters on the table outside each seat panel', () => {
+  it('places every player bid and trick counter on the table after the human bids', () => {
+    const state = displayState({
+      bids: [
+        { playerId: 'ember', bid: 2 },
+        { playerId: 'rowan', bid: 1 },
+        { playerId: 'mira', bid: 0 },
+        { playerId: 'human', bid: 3 },
+      ],
+    });
+    const { container } = render(
+      <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
+    );
+
+    for (const [name, bid, tricks] of [
+      ['You', '3', '1'],
+      ['Ember', '2', '0'],
+      ['Rowan', '1', '2'],
+      ['Mira', '0', '0'],
+    ]) {
+      const seat = screen.getByRole('region', { name: `${name} seat` });
+      const counters = within(seat).getByLabelText(`${name} round stats`);
+      expect(counters).toHaveClass('seat-table-stats');
+      expect(counters).toHaveTextContent(`Bid${bid}`);
+      expect(counters).toHaveTextContent(`Tricks${tricks}`);
+      expect(within(seat).getByText(/Score:/)).toBeInTheDocument();
+      expect(within(seat).queryByText(/Bid:/)).not.toBeInTheDocument();
+      expect(within(seat).queryByText(/Tricks:/)).not.toBeInTheDocument();
+    }
+    expect(container.querySelector('.seat-marker--dealer')).toHaveClass('seat-marker--dealer');
+  });
+
+  it('hides every bid value until the human submits a bid', () => {
     const state = displayState({
       bids: [
         { playerId: 'ember', bid: 2 },
@@ -193,22 +224,16 @@ describe('GameTable', () => {
         { playerId: 'mira', bid: 0 },
       ],
     });
-    const { container } = render(
-      <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
-    );
+    render(<GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />);
 
-    for (const [name, bid, tricks] of [['Ember', '2', '0'], ['Rowan', '1', '2'], ['Mira', '0', '0']]) {
-      const seat = screen.getByRole('region', { name: `${name} seat` });
-      const counters = within(seat).getByLabelText(`${name} round stats`);
-      expect(counters).toHaveClass('seat-table-stats');
-      expect(counters).toHaveTextContent(`Bid${bid}`);
-      expect(counters).toHaveTextContent(`Tricks${tricks}`);
-      expect(within(seat).getByText(/Score:/)).toBeInTheDocument();
+    for (const name of ['You', 'Ember', 'Rowan', 'Mira']) {
+      const stats = screen.getByLabelText(`${name} round stats`);
+      expect(stats).not.toHaveTextContent('Bid');
+      expect(stats).toHaveTextContent('Tricks');
     }
-    expect(container.querySelector('.seat-marker--dealer')).toHaveClass('seat-marker--dealer');
   });
 
-  it('leaves the top-left clear and shows the face-up trump card on the felt', () => {
+  it('shows the face-up trump card by the dealer during bidding', () => {
     const state = displayState();
     const { container } = render(
       <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
@@ -219,8 +244,6 @@ describe('GameTable', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Ember seat' })).getByText('Active')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Rowan seat' })).getByText('Dealer')).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'You seat' })).getByText('Bid: —')).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'You seat' })).getByText('Tricks: 1')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'You seat' })).getByText('Score: 30')).toBeInTheDocument();
     expect(screen.queryByText(/Trump:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Up card:/)).not.toBeInTheDocument();
@@ -247,6 +270,18 @@ describe('GameTable', () => {
       `face-up-card--${position}`,
     );
   });
+
+  it.each(['playing', 'trick-result'] as const)(
+    'parks the face-up card in the upper-left after bidding during %s',
+    (phase) => {
+      const state = displayState({ phase });
+      render(<GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />);
+
+      const reveal = screen.getByLabelText('Face-up card: Ten of Hearts. Hearts are trump.');
+      expect(reveal).toHaveClass('face-up-card--table-corner');
+      expect(reveal).not.toHaveClass('face-up-card--top');
+    },
+  );
 
   it('renders four fixed player-owned card slots in a cross and fills them by player identity', () => {
     const state = displayState({
@@ -563,9 +598,8 @@ describe('GameTable', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Game menu' })).toBeInTheDocument();
     expect(screen.queryByRole('toolbar', { name: 'Game menu' })).not.toBeInTheDocument();
-    expect(screen.getByRole('listitem', { name: 'You' })).toHaveTextContent(
-      '20 + (10 × 2) = +40',
-    );
+    expect(screen.getByRole('listitem', { name: 'You' })).toHaveTextContent('+40');
+    expect(screen.getByRole('listitem', { name: 'You' })).toHaveTextContent('Total 40');
     expect(screen.queryByRole('heading', { name: 'Current trick' })).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /your hand/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Opponent summaries' })).not.toBeInTheDocument();

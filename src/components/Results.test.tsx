@@ -123,22 +123,24 @@ describe('ScoreSheet', () => {
 });
 
 describe('RoundSummary', () => {
-  it('explains exact and missed bids from the stored score row', () => {
+  it('shows only each player name, signed round change, and total', () => {
     const state = stateWithScores();
     render(<RoundSummary state={state} onContinue={vi.fn()} />);
 
     expect(screen.getByRole('heading', { name: 'Round 2 complete' })).toBeInTheDocument();
     const you = screen.getByRole('listitem', { name: /you/i });
-    expect(you).toHaveTextContent('Bid 2');
-    expect(you).toHaveTextContent('Won 2 tricks');
-    expect(you).toHaveTextContent('20 + (10 × 2) = +40');
+    expect(you).toHaveTextContent('You');
+    expect(you).toHaveTextContent('+40');
     expect(you).toHaveTextContent('Total 70');
 
     const ember = screen.getByRole('listitem', { name: /ember/i });
-    expect(ember).toHaveTextContent('Bid 1');
-    expect(ember).toHaveTextContent('Won 0 tricks');
-    expect(ember).toHaveTextContent('10 × |0 − 1| = 10 point loss (−10)');
+    expect(ember).toHaveTextContent('Ember');
+    expect(ember).toHaveTextContent('−10');
     expect(ember).toHaveTextContent('Total −20');
+
+    expect(screen.queryByText(/Bid \d/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Won \d/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/[×=]/)).not.toBeInTheDocument();
   });
 
   it('continues the round exactly once from one activation', () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-import type { GameState, RoundPlayerScore } from '../game/types';
+import type { GameState } from '../game/types';
 import { formatNumber, formatSigned } from './ScoreSheet';
 
 export interface RoundSummaryProps {
@@ -36,10 +36,7 @@ export function RoundSummary({ state, onContinue }: RoundSummaryProps) {
                 aria-label={name}
               >
                 <h2>{name}</h2>
-                <p className="round-summary__bid">
-                  Bid {score.bid}; Won {score.tricks} {score.tricks === 1 ? 'trick' : 'tricks'}
-                </p>
-                <p className="round-summary__calculation">{scoreExplanation(score)}</p>
+                <p className="round-summary__change">{formatSigned(score.delta)}</p>
                 <p className="round-summary__total">Total {formatNumber(score.cumulative)}</p>
               </li>
             );
@@ -62,12 +59,4 @@ export function RoundSummary({ state, onContinue }: RoundSummaryProps) {
       </button>
     </section>
   );
-}
-
-function scoreExplanation(score: RoundPlayerScore): string {
-  if (score.bid === score.tricks) {
-    return `20 + (10 × ${score.bid}) = ${formatSigned(score.delta)}`;
-  }
-
-  return `10 × |${score.tricks} − ${score.bid}| = ${Math.abs(score.delta)} point loss (${formatSigned(score.delta)})`;
 }

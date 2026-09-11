@@ -222,6 +222,11 @@
 .player-seat--left .seat-table-stats { inset-block-start: 50%; inset-inline-end: -5.2rem; transform: translateY(-50%); }
 .player-seat--right .seat-table-stats { inset-block-start: 50%; inset-inline-start: -5.2rem; transform: translateY(-50%); }
 .player-seat--top .seat-table-stats { inset-block-end: 1rem; inset-inline-end: -6.2rem; }
+.player-seat--bottom .seat-table-stats {
+  inset-block-start: -5.25rem;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+}
 
 .trick-area {
   z-index: var(--z-table);
@@ -278,6 +283,12 @@
 .face-up-card--right { inset-block-start: 50%; inset-inline-end: 0; transform: translate(18%, -50%) rotate(5deg); }
 .face-up-card--bottom { inset-block-end: 0; inset-inline-start: 50%; transform: translate(-50%, 18%) rotate(3deg); }
 .face-up-card--left { inset-block-start: 50%; inset-inline-start: 0; transform: translate(-18%, -50%) rotate(-5deg); }
+.trick-area__surface--reveal-table-corner { position: static; }
+.face-up-card--table-corner {
+  inset-block-start: clamp(11rem, 25vh, 14rem);
+  inset-inline-start: clamp(10rem, 17vw, 15.5rem);
+  transform: rotate(-5deg);
+}
 
 .face-up-card .playing-card { --card-inline: clamp(3.8rem, 5.5vw, 5.2rem); }
 
@@ -446,6 +457,10 @@
 }
 
 .round-summary__player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: var(--space-3);
   padding: var(--space-3);
   border: 1px solid rgb(118 83 31 / 42%);
   border-inline-start-width: 0.3rem;
@@ -454,10 +469,9 @@
 }
 
 .round-summary__player h2,
-.round-summary__player p { margin-block-end: var(--space-1); }
+.round-summary__player p { margin: 0; }
 .round-summary__player h2 { color: var(--color-wood-deep); }
-.round-summary__bid,
-.round-summary__calculation { font-size: 0.82rem; }
+.round-summary__change { font-size: 1.15rem; font-weight: 850; }
 .round-summary__total { font-weight: 850; }
 .round-summary__continue { display: flex; margin-inline: auto; }
 
@@ -571,6 +585,12 @@
   .player-seat--left .seat-table-stats { inset-inline-end: -4rem; }
   .player-seat--right .seat-table-stats { inset-inline-start: -4rem; }
   .player-seat--top .seat-table-stats { inset-block-end: 0.45rem; inset-inline-end: -3.3rem; }
+  .human-area .player-seat--bottom { margin-block-start: 3rem; }
+  .human-area .player-seat--bottom .seat-table-stats {
+    inset-block-start: -2.8rem;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+  }
 
   .hidden-card-stack {
     inline-size: min(100%, 5.5rem);
@@ -589,6 +609,7 @@
   .trick-area__surface--dealer-left .trick-area__current { padding-inline-start: 3.4rem; }
   .trick-area__surface--dealer-right .trick-area__current { padding-inline-end: 3.4rem; }
   .face-up-card .playing-card { --card-inline: clamp(2.9rem, 13vw, 3.7rem); }
+  .face-up-card--table-corner { inset-block-start: 12rem; inset-inline-start: 4.25rem; }
   .face-up-card__trump-suit { inline-size: 1.55rem; font-size: 0.9rem; }
   .trick-area__plays {
     inline-size: min(100%, 15rem);

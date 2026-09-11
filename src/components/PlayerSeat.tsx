@@ -14,6 +14,7 @@ export interface PlayerSeatProps {
   readonly winner: boolean;
   readonly hiddenCardCount?: number;
   readonly externalRoundStats?: boolean;
+  readonly showBid?: boolean;
 }
 
 export function PlayerSeat({
@@ -28,6 +29,7 @@ export function PlayerSeat({
   winner,
   hiddenCardCount,
   externalRoundStats = false,
+  showBid = true,
 }: PlayerSeatProps) {
   const stateClasses = [
     active ? 'player-seat--active' : '',
@@ -49,7 +51,9 @@ export function PlayerSeat({
         <span className="seat-summary__score">Score: {score}</span>{' '}
         {externalRoundStats ? null : (
           <>
-            <span className="seat-summary__bid">Bid: {bid ?? '—'}</span>{' '}
+            {showBid && bid !== undefined ? (
+              <><span className="seat-summary__bid">Bid: {bid}</span>{' '}</>
+            ) : null}
             <span className="seat-summary__tricks">Tricks: {tricksWon}</span>
           </>
         )}
@@ -81,7 +85,9 @@ export function PlayerSeat({
       ) : null}
       {externalRoundStats ? (
         <div className="seat-table-stats" aria-label={`${player.name} round stats`}>
-          <span><small>Bid</small><strong>{bid ?? '—'}</strong></span>
+          {showBid && bid !== undefined ? (
+            <span><small>Bid</small><strong>{bid}</strong></span>
+          ) : null}
           <span><small>Tricks</small><strong>{tricksWon}</strong></span>
         </div>
       ) : null}

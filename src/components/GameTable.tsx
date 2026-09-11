@@ -66,6 +66,9 @@ export function GameTable({
     state.phase === 'choose-trump' && state.activePlayerId === 'human'
       ? legalActions.filter(isHumanTrumpAction)
       : [];
+  const bidsVisible = bidFor(state, 'human') !== undefined;
+  const revealPlacement =
+    state.phase === 'playing' || state.phase === 'trick-result' ? 'table-corner' : 'dealer';
 
   useEffect(() => {
     const previous = previousAudioStateRef.current;
@@ -159,6 +162,7 @@ export function GameTable({
         trump={state.trump}
         dealerChoosingTrump={state.phase === 'choose-trump' && state.trump === null}
         dealerPosition={SEAT_POSITIONS[state.dealerId]}
+        revealPlacement={revealPlacement}
       />
 
       {bidActions.length > 0 || trumpActions.length > 0 ? (
@@ -182,6 +186,8 @@ export function GameTable({
             active={activeDecisionPlayerId === 'human'}
             leader={leaderId === 'human'}
             winner={trickWinnerId === 'human'}
+            externalRoundStats
+            showBid={bidsVisible}
           />
           <div
             className="human-hand"
@@ -222,6 +228,7 @@ export function GameTable({
             leaderId={leaderId}
             trickWinnerId={trickWinnerId}
             hiddenCardCount={state.hands[player.id].length}
+            showBid={bidsVisible}
           />
         ))}
       </section>
@@ -266,6 +273,7 @@ function Seat({
   leaderId,
   trickWinnerId,
   hiddenCardCount,
+  showBid,
 }: {
   readonly player: PlayerMetadata;
   readonly state: GameState;
@@ -273,6 +281,7 @@ function Seat({
   readonly leaderId: PlayerId | null;
   readonly trickWinnerId: PlayerId | null;
   readonly hiddenCardCount: number;
+  readonly showBid: boolean;
 }) {
   return (
     <PlayerSeat
@@ -287,6 +296,7 @@ function Seat({
       winner={trickWinnerId === player.id}
       hiddenCardCount={hiddenCardCount}
       externalRoundStats
+      showBid={showBid}
     />
   );
 }

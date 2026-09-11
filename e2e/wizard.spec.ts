@@ -151,6 +151,40 @@ test('arranges four player-owned trick slots as a cross', async ({ page }) => {
   expect(centers.human.y).toBeGreaterThan(centers.mira.y);
 });
 
+test('withholds bids until the human bids and then parks the reveal in the upper-left', async ({ page }) => {
+  await openFresh(page, SEED_PATH);
+  await page.getByRole('button', { name: 'Easy' }).click();
+  const bidding = await reachHumanPhase(page, 'bidding');
+
+  const stats = page.locator('.seat-table-stats');
+  await expect(stats).toHaveCount(4);
+  for (const text of await stats.allTextContents()) {
+    expect(text).not.toContain('Bid');
+    expect(text).toContain('Tricks');
+  }
+
+  await page.getByRole('button', { name: /^Bid \d+$/ }).first().click();
+  await waitForGameChange(page, bidding.signature);
+  await expect(page.getByLabel('You round stats')).toContainText('Bid');
+  await reachHumanPhase(page, 'playing');
+
+  const reveal = page.locator('.face-up-card--table-corner');
+  await expect(reveal).toBeVisible();
+  const tableBox = await page.locator('.game-table').boundingBox();
+  expect(tableBox).not.toBeNull();
+  if (tableBox !== null) {
+    await expect.poll(async () => {
+      const revealBox = await reveal.boundingBox();
+      return revealBox === null ? Number.POSITIVE_INFINITY : revealBox.x + revealBox.width / 2;
+    }).toBeLessThan(tableBox.x + tableBox.width / 3);
+    const revealBox = await reveal.boundingBox();
+    expect(revealBox).not.toBeNull();
+    if (revealBox !== null) {
+      expect(revealBox.y + revealBox.height / 2).toBeLessThan(tableBox.y + tableBox.height / 3);
+    }
+  }
+});
+
 test.describe('normal-motion resume flows', () => {
   test.use({ reducedMotion: 'no-preference' });
 

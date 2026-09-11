@@ -9,6 +9,7 @@ export interface TrickAreaProps {
   readonly trump: Suit | null;
   readonly dealerChoosingTrump: boolean;
   readonly dealerPosition: SeatPosition;
+  readonly revealPlacement: 'dealer' | 'table-corner';
 }
 
 const TRICK_SLOT_POSITIONS: Readonly<Record<PlayerId, SeatPosition>> = {
@@ -25,16 +26,27 @@ export function TrickArea({
   trump,
   dealerChoosingTrump,
   dealerPosition,
+  revealPlacement,
 }: TrickAreaProps) {
   const playsByPlayer = new Map(plays.map((play) => [play.playerId, play]));
 
   return (
     <section className="trick-area" aria-labelledby="current-trick-heading">
       <h2 id="current-trick-heading">Current trick</h2>
-      <div className={`trick-area__surface trick-area__surface--dealer-${dealerPosition}`}>
+      <div
+        className={`trick-area__surface ${
+          revealPlacement === 'dealer'
+            ? `trick-area__surface--dealer-${dealerPosition}`
+            : 'trick-area__surface--reveal-table-corner'
+        }`}
+      >
         {revealedUpCard === null ? null : (
           <div
-            className={`face-up-card face-up-card--${dealerPosition}`}
+            className={`face-up-card ${
+              revealPlacement === 'dealer'
+                ? `face-up-card--${dealerPosition}`
+                : 'face-up-card--table-corner'
+            }`}
             aria-label={faceUpCardLabel(revealedUpCard, trump, dealerChoosingTrump)}
           >
             <PlayingCard card={revealedUpCard} playable={false} />
