@@ -544,6 +544,23 @@
   50% { opacity: 0.9; transform: scale(1.035); }
 }
 
+@media (min-width: 45.01rem) {
+  .game-table:not(.game-table--result-screen) { zoom: 0.625; }
+
+  .human-hand {
+    justify-content: center;
+    overflow-x: clip;
+  }
+
+  .human-hand > .playing-card {
+    flex: 1 1 0;
+    min-inline-size: 0;
+    max-inline-size: 7rem;
+  }
+
+  .human-hand > .playing-card + .playing-card { margin-inline-start: 0; }
+}
+
 @media (max-width: 64rem) {
   .game-table { grid-template-columns: minmax(7rem, 0.8fr) minmax(15rem, 1.45fr) minmax(7rem, 0.8fr); }
   .game-table::before { inset-inline: 2rem; }
@@ -553,6 +570,11 @@
 }
 
 @media (max-width: 45rem) {
+  .game-table:not(.game-table--result-screen) {
+    min-block-size: 400svh;
+    zoom: 0.25;
+  }
+
   .game-table {
     grid-template-areas:
       "status status status"
@@ -653,11 +675,16 @@
   .human-hand {
     justify-content: flex-start;
     padding: 4rem var(--space-5) var(--space-4);
+    overflow-x: clip;
     scroll-snap-type: x proximity;
   }
 
-  .human-hand > .playing-card { flex: 0 0 auto; scroll-snap-align: center; }
-  .human-hand > .playing-card + .playing-card { margin-inline-start: -3.2rem; }
+  .human-hand > .playing-card {
+    --card-inline: 5rem;
+    flex: 0 0 var(--card-inline);
+    scroll-snap-align: center;
+  }
+  .human-hand > .playing-card + .playing-card { margin-inline-start: 0; }
   .round-summary__scores { grid-template-columns: 1fr; }
 }
 
@@ -670,6 +697,7 @@
 /* Result screens replace the spatial table. Keep this definitive rule after every
    table breakpoint so named areas, fixed menu tracks, and the oval rim cannot leak in. */
 .game-table.game-table--result-screen {
+  zoom: 1;
   grid-template-areas: none;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: none;

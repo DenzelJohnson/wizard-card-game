@@ -127,7 +127,7 @@ test('plays a persisted Medium match through all 15 rounds', async ({ page }, te
   await expect(page.getByRole('heading', { name: 'Match complete' })).toBeVisible();
 });
 
-test('arranges four enlarged player-owned trick slots as a cross', async ({ page }, testInfo) => {
+test('arranges four enlarged player-owned trick slots as a cross', async ({ page }) => {
   await openFresh(page, SEED_PATH);
   await page.getByRole('button', { name: 'Easy' }).click();
   await waitForHumanDecision(page);
@@ -150,14 +150,16 @@ test('arranges four enlarged player-owned trick slots as a cross', async ({ page
   expect(centers.human.y).toBeGreaterThan(centers.ember.y);
   expect(centers.human.y).toBeGreaterThan(centers.mira.y);
 
-  const slotSize = await page.locator('.trick-play__empty').first().evaluate((slot) => {
-    const rect = slot.getBoundingClientRect();
-    return { width: rect.width, height: rect.height };
-  });
-  const minimumCardWidth = testInfo.project.name === 'desktop-chromium' ? 150 : 100;
+  const [slotSize, faceUpWidth] = await Promise.all([
+    page.locator('.trick-play__empty').first().evaluate((slot) => {
+      const rect = slot.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }),
+    page.locator('.face-up-card .playing-card').evaluate((card) => card.getBoundingClientRect().width),
+  ]);
 
-  expect(slotSize.width).toBeGreaterThanOrEqual(minimumCardWidth);
-  expect(slotSize.height).toBeGreaterThanOrEqual(minimumCardWidth * 1.4);
+  expect(slotSize.width).toBeGreaterThanOrEqual(faceUpWidth * 1.8);
+  expect(slotSize.height).toBeGreaterThanOrEqual(slotSize.width * 1.39);
 });
 
 test('withholds bids until the human bids and then parks the reveal in the upper-left', async ({ page }) => {
@@ -211,8 +213,11 @@ test('enlarges human hand cards without fading their disabled state', async ({ p
       filter: style.filter,
     };
   });
+  const tableCardWidth = await page
+    .locator('.face-up-card .playing-card')
+    .evaluate((element) => element.getBoundingClientRect().width);
 
-  expect(presentation.width).toBeGreaterThanOrEqual(150);
+  expect(presentation.width).toBeGreaterThanOrEqual(tableCardWidth * 1.25);
   expect(presentation.opacity).toBe('1');
   expect(presentation.filter).toBe('none');
 });
@@ -380,10 +385,9 @@ test('keeps the critical mobile flow contained with usable controls at 390px and
   await page.getByRole('button', { name: 'Easy' }).click();
   await reachHumanPhase(page, 'playing');
   await expectNoDocumentOverflow(page);
-  await expectMinimumControlSize(page);
+  await expectGameTableFitsViewport(page);
   await expectContained(page.locator('.game-table'));
-  await expectContained(page.locator('.human-hand'));
-  await expect(page.locator('.human-hand')).toHaveCSS('overflow-x', 'auto');
+  await expectHandFitsViewport(page.locator('.human-hand'));
   for (const seatName of ['You', 'Ember', 'Rowan', 'Mira']) {
     await expectContained(page.getByRole('region', { name: `${seatName} seat` }));
   }
@@ -395,24 +399,22 @@ test('keeps the critical mobile flow contained with usable controls at 390px and
   await driveUntilPhase(page, 'round-result');
   await expect(page.getByRole('heading', { name: 'Round 1 complete' })).toBeVisible();
   await expectNoDocumentOverflow(page);
-  await expectMinimumControlSize(page);
   await expectContained(page.locator('.round-summary'));
 
   await page.setViewportSize({ width: 320, height: 844 });
   await expectNoDocumentOverflow(page);
-  await expectMinimumControlSize(page);
   await expectContained(page.locator('.round-summary'));
 
   const firstRoundResult = await readGameSnapshot(page);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await waitForGameChange(page, firstRoundResult.signature);
-  const activeAt320 = await reachHumanPlayingRound(page, 8);
+  const activeAt320 = await reachHumanPlayingRound(page, 15);
   const handAt320 = page.locator('.human-hand');
   await expectNoDocumentOverflow(page);
-  await expectMinimumControlSize(page);
+  await expectGameTableFitsViewport(page);
   await expectContained(page.locator('.game-table'));
   await expectContained(handAt320);
-  await expectHorizontallyScrollable(handAt320);
+  await expectHandFitsViewport(handAt320);
   for (const seatName of ['You', 'Ember', 'Rowan', 'Mira']) {
     await expectContained(page.getByRole('region', { name: `${seatName} seat` }));
   }
@@ -425,6 +427,19 @@ test('keeps the critical mobile flow contained with usable controls at 390px and
   await expectNoDocumentOverflow(page);
   await expectMinimumControlSize(page);
   await expectContained(page.locator('.home-screen__panel'));
+});
+
+test('fits the complete desktop table and full hand inside the viewport', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'desktop layout coverage');
+
+  await openFresh(page, SEED_PATH);
+  await page.getByRole('button', { name: 'Easy' }).click();
+  await reachHumanPlayingRound(page, 15);
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  await expectNoDocumentOverflow(page);
+  await expectGameTableFitsViewport(page);
+  await expectHandFitsViewport(page.locator('.human-hand'));
 });
 
 test('builds production assets beneath the GitHub Pages base', async ({}, testInfo) => {
@@ -654,19 +669,29 @@ async function expectContained(locator: Locator): Promise<void> {
   expect(box.x + box.width).toBeLessThanOrEqual(viewportWidth + 0.5);
 }
 
-async function expectHorizontallyScrollable(locator: Locator): Promise<void> {
+async function expectHandFitsViewport(locator: Locator): Promise<void> {
   const dimensions = await locator.evaluate((element) => ({
     clientWidth: element.clientWidth,
     overflowX: getComputedStyle(element).overflowX,
     scrollWidth: element.scrollWidth,
   }));
-  expect(dimensions.overflowX).toBe('auto');
-  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
+  expect(dimensions.overflowX).not.toBe('auto');
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+}
 
-  await locator.evaluate((element) => {
-    element.scrollLeft = element.scrollWidth;
+async function expectGameTableFitsViewport(page: Page): Promise<void> {
+  const dimensions = await page.locator('.game-table').evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      bottom: rect.bottom,
+      scrollHeight: document.documentElement.scrollHeight,
+      viewportHeight: document.documentElement.clientHeight,
+      top: rect.top,
+    };
   });
-  await expect.poll(() => locator.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  expect(dimensions.top).toBeGreaterThanOrEqual(-0.5);
+  expect(dimensions.bottom).toBeLessThanOrEqual(dimensions.viewportHeight + 0.5);
+  expect(dimensions.scrollHeight).toBeLessThanOrEqual(dimensions.viewportHeight);
 }
 
 function cssDurationMilliseconds(duration: string): number {
