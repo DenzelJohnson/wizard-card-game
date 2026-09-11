@@ -35,6 +35,8 @@ const SEAT_POSITIONS: Readonly<Record<PlayerId, SeatPosition>> = {
   mira: 'right',
 };
 
+const HAND_SUIT_ORDER = { spades: 0, hearts: 1, clubs: 2, diamonds: 3 } as const;
+
 export function GameTable({
   state,
   legalActions,
@@ -187,7 +189,7 @@ export function GameTable({
               state.hands.human.length === 1 ? 'card' : 'cards'
             }`}
           >
-            {state.hands.human.map((card) => {
+            {sortHandForDisplay(state.hands.human).map((card) => {
               const action = humanPlayAction(card, state, legalActions);
               const canPlayNow = state.phase === 'playing' && state.activePlayerId === 'human';
 
@@ -224,6 +226,18 @@ export function GameTable({
       </section>
     </main>
   );
+}
+
+export function sortHandForDisplay(hand: readonly Card[]): Card[] {
+  return [...hand].sort((left, right) => {
+    const leftGroup = left.kind === 'suited' ? HAND_SUIT_ORDER[left.suit] : left.kind === 'wizard' ? 4 : 5;
+    const rightGroup = right.kind === 'suited' ? HAND_SUIT_ORDER[right.suit] : right.kind === 'wizard' ? 4 : 5;
+    if (leftGroup !== rightGroup) return leftGroup - rightGroup;
+    if (left.kind === 'suited' && right.kind === 'suited' && left.rank !== right.rank) {
+      return right.rank - left.rank;
+    }
+    return left.id.localeCompare(right.id);
+  });
 }
 
 function audioSnapshot(state: GameState): {

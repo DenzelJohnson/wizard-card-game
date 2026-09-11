@@ -348,6 +348,35 @@ describe('GameTable', () => {
     expect(within(screen.getByRole('region', { name: 'Ember seat' })).getByText('Leader')).toBeInTheDocument();
   });
 
+  it('always displays the human hand by suit and descending rank, then Wizards and Jesters', () => {
+    const orderedCards: Card[] = [
+      { id: 'spades-14', kind: 'suited', suit: 'spades', rank: 14 },
+      { id: 'spades-3', kind: 'suited', suit: 'spades', rank: 3 },
+      { id: 'hearts-13', kind: 'suited', suit: 'hearts', rank: 13 },
+      { id: 'clubs-12', kind: 'suited', suit: 'clubs', rank: 12 },
+      { id: 'clubs-2', kind: 'suited', suit: 'clubs', rank: 2 },
+      { id: 'diamonds-10', kind: 'suited', suit: 'diamonds', rank: 10 },
+      { id: 'wizard-1', kind: 'wizard' },
+      { id: 'wizard-2', kind: 'wizard' },
+      { id: 'jester-1', kind: 'jester' },
+    ];
+    const state = displayState({
+      hands: {
+        ...displayState().hands,
+        human: [orderedCards[8], orderedCards[4], orderedCards[2], orderedCards[6], orderedCards[1], orderedCards[5], orderedCards[0], orderedCards[7], orderedCards[3]],
+      },
+    });
+    const { container } = render(
+      <GameTable state={state} legalActions={legalActions(state)} onAction={vi.fn()} />,
+    );
+
+    expect(
+      [...container.querySelectorAll('.human-hand > [data-card-id]')].map((element) =>
+        element.getAttribute('data-card-id'),
+      ),
+    ).toEqual(orderedCards.map((item) => item.id));
+  });
+
   it('disables every human card during a computer turn and explains the phase', () => {
     const state = restrictedFollowSuitState('ember');
     const onAction = vi.fn();
