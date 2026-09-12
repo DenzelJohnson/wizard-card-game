@@ -42,7 +42,7 @@ export function RoundSummary({ state, onContinue }: RoundSummaryProps) {
                   <h2>{name}</h2>
                   <p className="round-summary__change">({formatSigned(score.delta)})</p>
                 </div>
-                <p className="round-summary__total">Total {formatNumber(score.cumulative)}</p>
+                <p className="round-summary__total">{formatNumber(score.cumulative)}</p>
               </li>
             );
           })}

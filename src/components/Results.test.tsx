@@ -131,12 +131,14 @@ describe('RoundSummary', () => {
     const you = screen.getByRole('listitem', { name: /you/i });
     expect(you).toHaveTextContent('You');
     expect(you).toHaveTextContent('(+40)');
-    expect(you).toHaveTextContent('Total 70');
+    expect(you).toHaveTextContent('70');
+    expect(you).not.toHaveTextContent('Total');
 
     const ember = screen.getByRole('listitem', { name: /ember/i });
     expect(ember).toHaveTextContent('Ember');
     expect(ember).toHaveTextContent('−10');
-    expect(ember).toHaveTextContent('Total −20');
+    expect(ember).toHaveTextContent('−20');
+    expect(ember).not.toHaveTextContent('Total');
 
     expect(
       within(screen.getByRole('list', { name: 'Round 2 scores' }))

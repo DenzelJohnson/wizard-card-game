@@ -492,7 +492,7 @@
 .round-summary__player h2 { color: var(--color-wood-deep); }
 .round-summary__player-score { display: flex; min-inline-size: 0; align-items: baseline; gap: var(--space-2); }
 .round-summary__change { font-size: 1.15rem; font-weight: 850; }
-.round-summary__total { font-weight: 850; }
+.round-summary__total { font-size: clamp(1.45rem, 3vw, 2.1rem); font-weight: 850; }
 .round-summary__continue { display: flex; margin-inline: auto; }
 
 .round-summary__continue:focus {
