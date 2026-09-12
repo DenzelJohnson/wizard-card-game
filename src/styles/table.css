@@ -434,11 +434,12 @@
 }
 
 .human-hand .playing-card--trump {
-  border-color: var(--color-gold-bright);
+  border: 0.4rem solid #9b59b6;
   box-shadow:
     0 0.38rem 0.8rem rgb(0 0 0 / 42%),
-    0 0 0.7rem rgb(240 203 114 / 78%),
-    inset 0 0 0 0.16rem rgb(240 203 114 / 64%);
+    0 0 1.15rem rgb(155 89 182 / 92%),
+    0 0 0 0.16rem rgb(89 35 120 / 92%),
+    inset 0 0 0 0.18rem rgb(222 184 255 / 74%);
 }
 
 .round-summary,

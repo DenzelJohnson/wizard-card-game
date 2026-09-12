@@ -246,6 +246,25 @@ test('enlarges human hand cards without fading their disabled state', async ({ p
   expect(presentation.filter).toBe('none');
 });
 
+test('uses a thick purple highlight for trump cards in the human hand', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'desktop trump styling coverage');
+
+  await openFresh(page, '/?seed=6');
+  await page.getByRole('button', { name: 'Easy' }).click();
+  await reachHumanPhase(page, 'bidding');
+
+  const trump = page.locator('.human-hand .playing-card--trump').first();
+  await expect(trump).toBeVisible();
+  const presentation = await trump.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { borderWidth: style.borderTopWidth, borderColor: style.borderTopColor, boxShadow: style.boxShadow };
+  });
+
+  expect(Number.parseFloat(presentation.borderWidth)).toBeGreaterThanOrEqual(3);
+  expect(presentation.borderColor).toBe('rgb(155, 89, 182)');
+  expect(presentation.boxShadow).toContain('155, 89, 182');
+});
+
 test.describe('normal-motion resume flows', () => {
   test.use({ reducedMotion: 'no-preference' });
 
