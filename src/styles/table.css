@@ -476,10 +476,10 @@
 }
 
 .round-summary__player {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: flex;
   align-items: baseline;
-  gap: var(--space-3);
+  justify-content: space-between;
+  gap: var(--space-4);
   padding: var(--space-3);
   border: 1px solid rgb(118 83 31 / 42%);
   border-inline-start-width: 0.3rem;
@@ -490,6 +490,7 @@
 .round-summary__player h2,
 .round-summary__player p { margin: 0; }
 .round-summary__player h2 { color: var(--color-wood-deep); }
+.round-summary__player-score { display: flex; min-inline-size: 0; align-items: baseline; gap: var(--space-2); }
 .round-summary__change { font-size: 1.15rem; font-weight: 850; }
 .round-summary__total { font-weight: 850; }
 .round-summary__continue { display: flex; margin-inline: auto; }

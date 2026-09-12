@@ -38,8 +38,10 @@ export function RoundSummary({ state, onContinue }: RoundSummaryProps) {
                 }`}
                 aria-label={name}
               >
-                <h2>{name}</h2>
-                <p className="round-summary__change">{formatSigned(score.delta)}</p>
+                <div className="round-summary__player-score">
+                  <h2>{name}</h2>
+                  <p className="round-summary__change">({formatSigned(score.delta)})</p>
+                </div>
                 <p className="round-summary__total">Total {formatNumber(score.cumulative)}</p>
               </li>
             );

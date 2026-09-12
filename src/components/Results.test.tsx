@@ -130,7 +130,7 @@ describe('RoundSummary', () => {
     expect(screen.getByRole('heading', { name: 'Round 2 complete' })).toBeInTheDocument();
     const you = screen.getByRole('listitem', { name: /you/i });
     expect(you).toHaveTextContent('You');
-    expect(you).toHaveTextContent('+40');
+    expect(you).toHaveTextContent('(+40)');
     expect(you).toHaveTextContent('Total 70');
 
     const ember = screen.getByRole('listitem', { name: /ember/i });
