@@ -196,6 +196,30 @@ test('withholds bids until the human bids and then parks the reveal in the upper
   }
 });
 
+test('keeps dealer face-up cards clear of bid and trick counters', async ({ page }) => {
+  for (const seed of [4, 12]) {
+    await openFresh(page, `/?seed=${seed}`);
+    await page.getByRole('button', { name: 'Easy' }).click();
+    const reveal = page.locator('.face-up-card');
+    await expect(reveal).toBeVisible();
+
+    const dealerRevealOverlap = await reveal.evaluate((card) => {
+      const cardBox = card.getBoundingClientRect();
+      return Array.from(document.querySelectorAll<HTMLElement>('.seat-table-stats')).some((stats) => {
+        const statsBox = stats.getBoundingClientRect();
+        return (
+          cardBox.left < statsBox.right &&
+          cardBox.right > statsBox.left &&
+          cardBox.top < statsBox.bottom &&
+          cardBox.bottom > statsBox.top
+        );
+      });
+    });
+
+    expect(dealerRevealOverlap, `seed ${seed}`).toBe(false);
+  }
+});
+
 test('enlarges human hand cards without fading their disabled state', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium', 'desktop hand-size coverage');
 

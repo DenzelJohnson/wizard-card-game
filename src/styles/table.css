@@ -280,9 +280,9 @@
 }
 
 .face-up-card--top { inset-block-start: 0; inset-inline-start: 50%; transform: translateX(-50%) rotate(-3deg); }
-.face-up-card--right { inset-block-start: 50%; inset-inline-end: 0; transform: translate(18%, -50%) rotate(5deg); }
+.face-up-card--right { inset-block-start: 50%; inset-inline-end: 6.5rem; transform: translateY(-50%) rotate(5deg); }
 .face-up-card--bottom { inset-block-end: 0; inset-inline-start: 50%; transform: translate(-50%, 18%) rotate(3deg); }
-.face-up-card--left { inset-block-start: 50%; inset-inline-start: 0; transform: translate(-18%, -50%) rotate(-5deg); }
+.face-up-card--left { inset-block-start: 50%; inset-inline-start: 6.5rem; transform: translateY(-50%) rotate(-5deg); }
 .trick-area__surface--reveal-table-corner { position: static; }
 .face-up-card--table-corner {
   inset-block-start: clamp(11rem, 25vh, 14rem);
