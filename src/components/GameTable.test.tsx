@@ -615,7 +615,8 @@ describe('GameTable', () => {
     expect(screen.getByRole('group', { name: 'Game menu' })).toBeInTheDocument();
     expect(screen.queryByRole('toolbar', { name: 'Game menu' })).not.toBeInTheDocument();
     expect(screen.getByRole('listitem', { name: 'You' })).toHaveTextContent('+40');
-    expect(screen.getByRole('listitem', { name: 'You' })).toHaveTextContent('Total 40');
+    expect(screen.getByRole('listitem', { name: 'You' })).toHaveTextContent('40');
+    expect(screen.getByRole('listitem', { name: 'You' })).not.toHaveTextContent('Total');
     expect(screen.queryByRole('heading', { name: 'Current trick' })).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /your hand/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Opponent summaries' })).not.toBeInTheDocument();
