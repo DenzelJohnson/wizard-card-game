@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../src/multiplayer/config';
+
 const SEED_PATH = '/?seed=42';
 const VISUAL_REVIEW_DIR = path.join(process.cwd(), 'test-results', 'visual-review');
 const MAX_GAME_TRANSITIONS = 1_200;
@@ -39,6 +41,83 @@ test.beforeEach(async ({ page }) => {
 
 test.afterEach(async ({ page }) => {
   expect(errorsByPage.get(page) ?? [], 'browser console and page errors').toEqual([]);
+});
+
+test('creates a private room, joins from another browser, and starts a shared game', async ({
+  browser,
+  page: host,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'desktop multiplayer coverage');
+  const guestContext = await browser.newContext();
+  const guest = await guestContext.newPage();
+  const baseUrl = String(testInfo.project.use.baseURL ?? 'http://127.0.0.1:4173');
+
+  try {
+    await host.goto(baseUrl);
+    await host.getByRole('button', { name: 'Play Online' }).click();
+    await host.getByLabel('Your name').fill('Denzel');
+    await host.getByRole('button', { name: 'Create Room' }).click();
+    const heading = host.getByRole('heading', { name: /^Room [A-Z0-9]{6}$/ });
+    await expect(heading).toBeVisible({ timeout: 20_000 });
+    const code = (await heading.textContent())?.replace('Room ', '') ?? '';
+
+    await guest.goto(baseUrl);
+    await guest.getByRole('button', { name: 'Play Online' }).click();
+    await guest.getByLabel('Your name').fill('Alex');
+    await guest.getByLabel('Room code').fill(code);
+    await guest.getByRole('button', { name: 'Join Room' }).click();
+    await expect(guest.getByRole('heading', { name: `Room ${code}` })).toBeVisible({ timeout: 20_000 });
+    await expect(host.getByText('2 of 2 people joined')).toBeVisible({ timeout: 20_000 });
+
+    await host.getByRole('button', { name: 'Start Game' }).click();
+    await expect(host.getByRole('heading', { name: 'Wizard game table' })).toBeVisible({ timeout: 20_000 });
+    await expect(guest.getByRole('heading', { name: 'Wizard game table' })).toBeVisible({ timeout: 20_000 });
+    await expect(guest.getByRole('region', { name: 'Alex seat' })).toHaveClass(/player-seat--bottom/);
+
+    const roomLookup = await supabaseRequest(guest, `/rest/v1/wizard_rooms?room_code=eq.${code}&select=id,revision`);
+    expect(roomLookup.status).toBe(200);
+    const roomId = (roomLookup.data as Array<{ id: string; revision: number }>)[0]?.id;
+    const revision = (roomLookup.data as Array<{ id: string; revision: number }>)[0]?.revision;
+    expect(roomId).toBeTruthy();
+    const hiddenFullState = await supabaseRequest(guest, `/rest/v1/wizard_game_states?room_id=eq.${roomId}&select=*`);
+    expect(hiddenFullState).toEqual({ status: 200, data: [] });
+    const privateState = await supabaseRequest(guest, `/rest/v1/wizard_player_states?room_id=eq.${roomId}&select=user_id`);
+    expect(privateState.status).toBe(200);
+    expect(privateState.data).toHaveLength(1);
+    const directWrite = await supabaseRequest(guest, `/rest/v1/wizard_rooms?id=eq.${roomId}`, {
+      method: 'PATCH', body: { status: 'finished' },
+    });
+    expect(directWrite.status).toBeGreaterThanOrEqual(400);
+    const malformedAction = await supabaseRequest(guest, '/rest/v1/rpc/submit_wizard_action', {
+      method: 'POST', body: { p_room_id: roomId, p_expected_revision: revision, p_action: {} },
+    });
+    expect(malformedAction.status).toBeGreaterThanOrEqual(400);
+
+    let guestActionReachedHost = false;
+    for (let transition = 0; transition < 24 && !guestActionReachedHost; transition += 1) {
+      const hostBefore = await readGameSnapshot(host);
+      if (hostBefore.activePlayer === 'human') {
+        await chooseFirstHumanAction(host, hostBefore);
+      } else if (hostBefore.activePlayer === 'ember') {
+        await expect.poll(async () => (await readGameSnapshot(guest)).activePlayer).toBe('ember');
+        const guestBefore = await readGameSnapshot(guest);
+        await chooseFirstHumanAction(guest, guestBefore);
+        await waitForGameChange(host, hostBefore.signature);
+        guestActionReachedHost = true;
+      } else {
+        await waitForGameChange(host, hostBefore.signature);
+      }
+    }
+    expect(guestActionReachedHost, 'the guest action reached the authoritative host').toBe(true);
+  } finally {
+    if (await host.getByRole('button', { name: 'Return Home' }).isVisible().catch(() => false)) {
+      await host.getByRole('button', { name: 'Return Home' }).click();
+      await host.getByRole('button', { name: 'Return Home and Abandon Match' }).click();
+    } else if (await host.getByRole('button', { name: 'Leave Room' }).isVisible().catch(() => false)) {
+      await host.getByRole('button', { name: 'Leave Room' }).click();
+    }
+    await guestContext.close();
+  }
 });
 
 test('plays a seeded Easy match through all 15 rounds and final standings', async ({
@@ -735,6 +814,37 @@ async function expectGameTableFitsViewport(page: Page): Promise<void> {
   expect(dimensions.top).toBeGreaterThanOrEqual(-0.5);
   expect(dimensions.bottom).toBeLessThanOrEqual(dimensions.viewportHeight + 0.5);
   expect(dimensions.scrollHeight).toBeLessThanOrEqual(dimensions.viewportHeight);
+}
+
+async function supabaseRequest(
+  page: Page,
+  pathName: string,
+  init: { readonly method: 'POST' | 'PATCH'; readonly body: unknown } | undefined = undefined,
+): Promise<{ readonly status: number; readonly data: unknown }> {
+  return page.evaluate(async ({ url, publishableKey, path, request }) => {
+    const authKey = Object.keys(localStorage).find((key) => key.startsWith('sb-') && key.endsWith('-auth-token'));
+    const storedSession = authKey === undefined ? null : localStorage.getItem(authKey);
+    const accessToken = storedSession === null
+      ? null
+      : (JSON.parse(storedSession) as { access_token?: string }).access_token;
+    if (accessToken === null || accessToken === undefined) throw new Error('No Supabase player session was found.');
+    const response = await fetch(`${url}${path}`, {
+      method: request?.method ?? 'GET',
+      headers: {
+        apikey: publishableKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: request === undefined ? undefined : JSON.stringify(request.body),
+    });
+    const text = await response.text();
+    return { status: response.status, data: text === '' ? null : JSON.parse(text) };
+  }, {
+    url: SUPABASE_URL,
+    publishableKey: SUPABASE_PUBLISHABLE_KEY,
+    path: pathName,
+    request: init,
+  });
 }
 
 function cssDurationMilliseconds(duration: string): number {

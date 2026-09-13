@@ -11,6 +11,7 @@ function renderHome(
     storageWarning: false,
     onStart: vi.fn(),
     onContinue: vi.fn(),
+    onOnline: vi.fn(),
     ...overrides,
   };
 
@@ -19,6 +20,12 @@ function renderHome(
 }
 
 describe('HomeScreen', () => {
+  it('opens online multiplayer from the home screen', () => {
+    const props = renderHome();
+    fireEvent.click(screen.getByRole('button', { name: 'Play Online' }));
+    expect(props.onOnline).toHaveBeenCalledOnce();
+  });
+
   it('starts Easy mode immediately when no saved game exists', () => {
     const props = renderHome();
     const easyButton = screen.getByRole('button', { name: 'Easy' });

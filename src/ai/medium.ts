@@ -5,20 +5,22 @@ import {
   type Card,
   type GameAction,
   type GameState,
+  type PlayerId,
   type RngState,
   type Suit,
 } from '../game/types';
 
-const COMPUTER_IDS = new Set(['ember', 'rowan', 'mira']);
+const DEFAULT_COMPUTER_IDS: readonly PlayerId[] = ['ember', 'rowan', 'mira'];
 const SUIT_TIE_BREAK: readonly Suit[] = ['spades', 'hearts', 'clubs', 'diamonds'];
 
 export function chooseMediumAction(
   state: GameState,
+  computerIds: readonly PlayerId[] = DEFAULT_COMPUTER_IDS,
 ): { readonly action: GameAction; readonly rng: RngState } | null {
   const playerId = state.activePlayerId;
   if (
     playerId === null ||
-    !COMPUTER_IDS.has(playerId) ||
+    !computerIds.includes(playerId) ||
     !['choose-trump', 'bidding', 'playing'].includes(state.phase)
   ) {
     return null;

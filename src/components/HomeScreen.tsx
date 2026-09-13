@@ -9,6 +9,7 @@ export interface HomeScreenProps {
   readonly storageWarning: boolean;
   readonly onStart: (difficulty: Difficulty) => void;
   readonly onContinue: () => void;
+  readonly onOnline?: () => void;
 }
 
 const EASY_MODE_TITLE_ID = 'easy-mode-title';
@@ -21,6 +22,7 @@ export function HomeScreen({
   storageWarning,
   onStart,
   onContinue,
+  onOnline = doNothing,
 }: HomeScreenProps) {
   const [openDialog, setOpenDialog] = useState<'new-game' | 'rules' | null>(null);
   const newGameTriggerRef = useRef<HTMLButtonElement>(null);
@@ -102,6 +104,13 @@ export function HomeScreen({
         </section>
         <div className="home-screen__secondary-actions">
           <button
+            className="button button--online"
+            type="button"
+            onClick={onOnline}
+          >
+            Play Online
+          </button>
+          <button
             ref={rulesButtonRef}
             className="button button--secondary"
             type="button"
@@ -152,3 +161,5 @@ export function HomeScreen({
     </main>
   );
 }
+
+function doNothing(): void {}

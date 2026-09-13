@@ -34,6 +34,18 @@ function decisionState(
 }
 
 describe('chooseMediumAction', () => {
+  it('can drive a caller-provided computer seat in an online game', () => {
+    const state = {
+      ...createMatch(42, 'medium'),
+      phase: 'bidding' as const,
+      activePlayerId: 'human' as const,
+    };
+
+    expect(chooseMediumAction(state, ['human'])?.action).toMatchObject({
+      type: 'PLACE_BID',
+      playerId: 'human',
+    });
+  });
   it('chooses the strongest suit for a Wizard reveal', () => {
     const state = decisionState('choose-trump', [
       card('spades', 14),

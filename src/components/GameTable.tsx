@@ -6,6 +6,7 @@ import {
   type SoundControllerOptions,
 } from '../audio/sounds';
 import type { Card, GameAction, GameState, PlayerId, PlayerMetadata } from '../game/types';
+import { seatPositionsFor } from '../multiplayer/model';
 import { BidPanel } from './BidPanel';
 import { GameMenu } from './GameMenu';
 import { MatchResult } from './MatchResult';
@@ -26,14 +27,9 @@ export interface GameTableProps {
   readonly onHome?: () => void;
   readonly sounds?: SoundController;
   readonly soundOptions?: SoundControllerOptions;
+  readonly localPlayerId?: PlayerId;
+  readonly canRestartMatch?: boolean;
 }
-
-const SEAT_POSITIONS: Readonly<Record<PlayerId, SeatPosition>> = {
-  human: 'bottom',
-  ember: 'left',
-  rowan: 'top',
-  mira: 'right',
-};
 
 const HAND_SUIT_ORDER = { spades: 0, hearts: 1, clubs: 2, diamonds: 3 } as const;
 
@@ -47,26 +43,35 @@ export function GameTable({
   onHome = doNothing,
   sounds,
   soundOptions,
+  localPlayerId = 'human',
+  canRestartMatch = true,
 }: GameTableProps) {
   const browserSounds = useSounds(soundOptions);
   const activeSounds = sounds ?? browserSounds;
   const previousAudioStateRef = useRef(audioSnapshot(state));
-  const human = state.players.find((player) => player.id === 'human');
-  const opponents = state.players.filter((player) => player.id !== 'human');
+  const localPlayer = state.players.find((player) => player.id === localPlayerId);
+  const opponents = state.players.filter((player) => player.id !== localPlayerId);
+  const seatPositions = seatPositionsFor(localPlayerId);
   const activeDecisionPlayerId = isDecisionPhase(state.phase) ? state.activePlayerId : null;
   const trickWinnerId = state.phase === 'trick-result' ? state.activePlayerId : null;
   const leaderId =
     state.currentTrick[0]?.playerId ??
     (state.phase === 'playing' && state.currentTrick.length === 0 ? state.activePlayerId : null);
   const bidActions =
-    state.phase === 'bidding' && state.activePlayerId === 'human'
-      ? legalActions.filter(isHumanBidAction)
+    state.phase === 'bidding' && state.activePlayerId === localPlayerId
+      ? legalActions.filter(
+          (action): action is Extract<GameAction, { readonly type: 'PLACE_BID' }> =>
+            action.type === 'PLACE_BID' && action.playerId === localPlayerId,
+        )
       : [];
   const trumpActions =
-    state.phase === 'choose-trump' && state.activePlayerId === 'human'
-      ? legalActions.filter(isHumanTrumpAction)
+    state.phase === 'choose-trump' && state.activePlayerId === localPlayerId
+      ? legalActions.filter(
+          (action): action is Extract<GameAction, { readonly type: 'CHOOSE_TRUMP' }> =>
+            action.type === 'CHOOSE_TRUMP' && action.playerId === localPlayerId,
+        )
       : [];
-  const bidsVisible = bidFor(state, 'human') !== undefined;
+  const bidsVisible = bidFor(state, localPlayerId) !== undefined;
   const revealPlacement =
     state.phase === 'playing' || state.phase === 'trick-result' ? 'table-corner' : 'dealer';
 
@@ -110,6 +115,7 @@ export function GameTable({
           onToggleSound={activeSounds.toggle}
           onRestart={onRestart}
           onHome={onHome}
+          showRestart={canRestartMatch}
         />
       </main>
     );
@@ -126,7 +132,12 @@ export function GameTable({
         data-active-player={state.activePlayerId ?? 'none'}
       >
         {storageWarning ? <StorageWarning /> : null}
-        <MatchResult state={state} onNewMatch={onRestart} onHome={onHome} />
+        <MatchResult
+          state={state}
+          onNewMatch={onRestart}
+          onHome={onHome}
+          showNewMatch={canRestartMatch}
+        />
       </main>
     );
   }
@@ -153,6 +164,7 @@ export function GameTable({
         onToggleSound={activeSounds.toggle}
         onRestart={onRestart}
         onHome={onHome}
+        showRestart={canRestartMatch}
       />
 
       <TrickArea
@@ -161,8 +173,9 @@ export function GameTable({
         revealedUpCard={state.revealedUpCard}
         trump={state.trump}
         dealerChoosingTrump={state.phase === 'choose-trump' && state.trump === null}
-        dealerPosition={SEAT_POSITIONS[state.dealerId]}
+        dealerPosition={seatPositions[state.dealerId]}
         revealPlacement={revealPlacement}
+        seatPositions={seatPositions}
       />
 
       {bidActions.length > 0 || trumpActions.length > 0 ? (
@@ -174,31 +187,31 @@ export function GameTable({
         </section>
       ) : null}
 
-      {human ? (
+      {localPlayer ? (
         <section className="human-area" aria-label="Your hand and seat">
           <PlayerSeat
-            player={human}
-            position={SEAT_POSITIONS.human}
-            score={state.scores.human}
-            bid={bidFor(state, 'human')}
-            tricksWon={state.tricksWon.human}
-            dealer={state.dealerId === 'human'}
-            active={activeDecisionPlayerId === 'human'}
-            leader={leaderId === 'human'}
-            winner={trickWinnerId === 'human'}
+            player={localPlayer}
+            position={seatPositions[localPlayerId]}
+            score={state.scores[localPlayerId]}
+            bid={bidFor(state, localPlayerId)}
+            tricksWon={state.tricksWon[localPlayerId]}
+            dealer={state.dealerId === localPlayerId}
+            active={activeDecisionPlayerId === localPlayerId}
+            leader={leaderId === localPlayerId}
+            winner={trickWinnerId === localPlayerId}
             externalRoundStats
             showBid={bidsVisible}
           />
           <div
             className="human-hand"
             role="group"
-            aria-label={`Your hand, ${state.hands.human.length} ${
-              state.hands.human.length === 1 ? 'card' : 'cards'
+            aria-label={`Your hand, ${state.hands[localPlayerId].length} ${
+              state.hands[localPlayerId].length === 1 ? 'card' : 'cards'
             }`}
           >
-            {sortHandForDisplay(state.hands.human).map((card) => {
-              const action = humanPlayAction(card, state, legalActions);
-              const canPlayNow = state.phase === 'playing' && state.activePlayerId === 'human';
+            {sortHandForDisplay(state.hands[localPlayerId]).map((card) => {
+              const action = localPlayAction(card, state, legalActions, localPlayerId);
+              const canPlayNow = state.phase === 'playing' && state.activePlayerId === localPlayerId;
 
               return (
                 <PlayingCard
@@ -228,8 +241,9 @@ export function GameTable({
             activeDecisionPlayerId={activeDecisionPlayerId}
             leaderId={leaderId}
             trickWinnerId={trickWinnerId}
-            hiddenCardCount={state.hands[player.id].length}
+            hiddenCardCount={hiddenCardCountFor(state, player.id)}
             showBid={bidsVisible}
+            position={seatPositions[player.id]}
           />
         ))}
       </section>
@@ -267,6 +281,14 @@ function audioSnapshot(state: GameState): {
 
 function doNothing(): void {}
 
+function hiddenCardCountFor(state: GameState, playerId: PlayerId): number {
+  const visibleCount = state.hands[playerId].length;
+  if (visibleCount > 0 || state.phase === 'round-setup') return visibleCount;
+
+  const playedThisTrick = state.currentTrick.some((play) => play.playerId === playerId) ? 1 : 0;
+  return Math.max(0, state.round - state.completedTricks.length - playedThisTrick);
+}
+
 function Seat({
   player,
   state,
@@ -275,6 +297,7 @@ function Seat({
   trickWinnerId,
   hiddenCardCount,
   showBid,
+  position,
 }: {
   readonly player: PlayerMetadata;
   readonly state: GameState;
@@ -283,11 +306,12 @@ function Seat({
   readonly trickWinnerId: PlayerId | null;
   readonly hiddenCardCount: number;
   readonly showBid: boolean;
+  readonly position: SeatPosition;
 }) {
   return (
     <PlayerSeat
       player={player}
-      position={SEAT_POSITIONS[player.id]}
+      position={position}
       score={state.scores[player.id]}
       bid={bidFor(state, player.id)}
       tricksWon={state.tricksWon[player.id]}
@@ -310,29 +334,18 @@ function bidFor(state: GameState, playerId: PlayerId): number | undefined {
   return state.bids.find((record) => record.playerId === playerId)?.bid;
 }
 
-function humanPlayAction(
+function localPlayAction(
   card: Card,
   state: GameState,
   legalActions: readonly GameAction[],
+  localPlayerId: PlayerId,
 ): Extract<GameAction, { readonly type: 'PLAY_CARD' }> | undefined {
-  if (state.phase !== 'playing' || state.activePlayerId !== 'human') {
+  if (state.phase !== 'playing' || state.activePlayerId !== localPlayerId) {
     return undefined;
   }
 
   return legalActions.find(
     (action): action is Extract<GameAction, { readonly type: 'PLAY_CARD' }> =>
-      action.type === 'PLAY_CARD' && action.playerId === 'human' && action.cardId === card.id,
+      action.type === 'PLAY_CARD' && action.playerId === localPlayerId && action.cardId === card.id,
   );
-}
-
-function isHumanBidAction(
-  action: GameAction,
-): action is Extract<GameAction, { readonly type: 'PLACE_BID' }> {
-  return action.type === 'PLACE_BID' && action.playerId === 'human';
-}
-
-function isHumanTrumpAction(
-  action: GameAction,
-): action is Extract<GameAction, { readonly type: 'CHOOSE_TRUMP' }> {
-  return action.type === 'CHOOSE_TRUMP' && action.playerId === 'human';
 }

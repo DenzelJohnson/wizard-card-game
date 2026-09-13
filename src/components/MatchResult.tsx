@@ -9,9 +9,10 @@ export interface MatchResultProps {
   readonly state: GameState;
   readonly onNewMatch: () => void;
   readonly onHome: () => void;
+  readonly showNewMatch?: boolean;
 }
 
-export function MatchResult({ state, onNewMatch, onHome }: MatchResultProps) {
+export function MatchResult({ state, onNewMatch, onHome, showNewMatch = true }: MatchResultProps) {
   const [scoreSheetOpen, setScoreSheetOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const scoreSheetButtonRef = useRef<HTMLButtonElement>(null);
@@ -74,9 +75,11 @@ export function MatchResult({ state, onNewMatch, onHome }: MatchResultProps) {
         >
           Score Sheet
         </button>
-        <button className="button button--primary" type="button" onClick={onNewMatch}>
-          New Match
-        </button>
+        {showNewMatch ? (
+          <button className="button button--primary" type="button" onClick={onNewMatch}>
+            New Match
+          </button>
+        ) : null}
         <button className="button button--secondary" type="button" onClick={onHome}>
           Return Home
         </button>

@@ -10,6 +10,7 @@ export interface TrickAreaProps {
   readonly dealerChoosingTrump: boolean;
   readonly dealerPosition: SeatPosition;
   readonly revealPlacement: 'dealer' | 'table-corner';
+  readonly seatPositions?: Readonly<Record<PlayerId, SeatPosition>>;
 }
 
 const TRICK_SLOT_POSITIONS: Readonly<Record<PlayerId, SeatPosition>> = {
@@ -27,6 +28,7 @@ export function TrickArea({
   dealerChoosingTrump,
   dealerPosition,
   revealPlacement,
+  seatPositions = TRICK_SLOT_POSITIONS,
 }: TrickAreaProps) {
   const playsByPlayer = new Map(plays.map((play) => [play.playerId, play]));
 
@@ -61,7 +63,7 @@ export function TrickArea({
           <ul className="trick-area__plays" aria-label="Player card slots">
             {players.map((player) => {
               const play = playsByPlayer.get(player.id);
-              const position = TRICK_SLOT_POSITIONS[player.id];
+              const position = seatPositions[player.id];
 
               return (
                 <li

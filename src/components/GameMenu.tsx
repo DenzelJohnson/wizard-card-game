@@ -11,6 +11,7 @@ export interface GameMenuProps {
   readonly onToggleSound: () => void;
   readonly onRestart: () => void;
   readonly onHome: () => void;
+  readonly showRestart?: boolean;
 }
 
 type OpenPanel = 'scores' | 'rules' | 'restart' | 'home' | null;
@@ -21,6 +22,7 @@ export function GameMenu({
   onToggleSound,
   onRestart,
   onHome,
+  showRestart = true,
 }: GameMenuProps) {
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
@@ -77,9 +79,11 @@ export function GameMenu({
             {soundEnabled ? 'On' : 'Off'}
           </span>
         </button>
-        <button className="game-menu__button" ref={restartButtonRef} type="button" onClick={requestRestart}>
-          Restart
-        </button>
+        {showRestart ? (
+          <button className="game-menu__button" ref={restartButtonRef} type="button" onClick={requestRestart}>
+            Restart
+          </button>
+        ) : null}
         <button className="game-menu__button" ref={homeButtonRef} type="button" onClick={requestHome}>
           Return Home
         </button>
@@ -98,7 +102,7 @@ export function GameMenu({
         returnFocusRef={rulesButtonRef}
       />
       <AccessibleDialog
-        open={openPanel === 'restart'}
+        open={showRestart && openPanel === 'restart'}
         titleId="restart-match-title"
         descriptionId="restart-match-description"
         onClose={() => setOpenPanel(null)}

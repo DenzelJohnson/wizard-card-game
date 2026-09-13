@@ -1,9 +1,10 @@
 # Wizard Card Game
 
-A complete, browser-based Wizard card game for one human and three computer opponents, presented
-as a candlelit fantasy tavern. Play all 15 rounds in **Easy** mode, where every computer obeys the
-rules and chooses uniformly at random from its legal actions. **Hard — Beta** is visible on the
-home screen but intentionally unavailable in this release.
+A complete browser-based Wizard card game presented as a candlelit fantasy tavern. Play all 15
+rounds solo against three computer opponents, or create a private online room for two to four
+people on separate devices and fill the remaining seats with computers. **Easy** computers choose
+random legal actions, **Medium** computers use a rule-based strategy, and **Hard — Beta** remains
+visible but locked.
 
 [Play Wizard](https://denzeljohnson.github.io/wizard-card-game/) ·
 [View the public repository](https://github.com/DenzelJohnson/wizard-card-game)
@@ -71,7 +72,8 @@ project URL. Development builds use `/`.
 
 ### Match and trump
 
-- The game always has four seats: you, Ember, Rowan, and Mira.
+- The game always has four seats. Solo mode uses you, Ember, Rowan, and Mira; online rooms assign
+  the same four table positions to the people who join and use computers for the remaining seats.
 - The initial dealer is chosen by the seeded game randomizer. The dealer moves one seat clockwise
   after every round.
 - Round 1 deals one card to each player, round 2 deals two, and so on through round 15.
@@ -95,8 +97,10 @@ project URL. Development builds use `/`.
 - A leading Jester does not establish a suit; the first later suited card does. If a Wizard is
   played before a suit is established, it fixes the winner and the remaining players are
   unrestricted.
-- Easy opponents select uniformly at random from the legal bids, trump suits, or cards supplied by
-  the same rules engine used for the human player.
+- Easy opponents select uniformly at random from legal bids, trump suits, or cards. Medium
+  opponents use deterministic card-strength, bid, trick-target, and conservation rules without
+  learning or machine learning. Both modes receive legal actions from the same rules engine used
+  for human players.
 
 ### Winning tricks and scoring
 
@@ -107,12 +111,28 @@ An exact bid scores `20 + (10 × bid)` points. A missed bid scores `-10 × |tric
 Scores accumulate through all 15 rounds. Every player tied for the highest final score is declared
 a winner.
 
+## Online multiplayer
+
+Choose **Play Online**, enter a display name, and either create a room or join one with its
+six-character code. A host selects two, three, or four human seats plus Easy or Medium computers;
+the game can start when every human seat is occupied. Each player sees the shared table with their
+own seat at the bottom and only their own hand.
+
+Online rooms use anonymous Supabase identities, PostgreSQL row-level security, and private
+Realtime channels. The host browser validates actions with the game engine and advances computer
+turns, so the host must remain connected for the match. Returning with the same browser identity
+and room code can reconnect an existing room member. The repository contains only the public
+Supabase project URL and publishable browser key; no database password or secret/service key is
+used by the client. Each browser identity may host one active room at a time, and rooms inactive
+for 24 hours are removed when a new room is created.
+
 ## Save, resume, and settings
 
 An unfinished match is saved automatically in browser `localStorage` after accepted game-state
 changes. Returning in the same browser exposes **Continue Game** when the saved match is valid.
-Completed, abandoned, or invalid saves are cleared safely. Saves are local to the current browser
-and device; there are no accounts or cloud synchronization.
+Completed, abandoned, or invalid solo saves are cleared safely. Solo saves are local to the current
+browser and device. Online state is kept separately in the private room and never overwrites a solo
+save.
 
 Sound is opt-in, synthesized in the browser, and stored separately from the match. The game remains
 fully playable when browser storage or Web Audio is unavailable.
@@ -130,13 +150,15 @@ mobile screens, and animation is minimized when the operating system requests re
 | Path | Purpose |
 | --- | --- |
 | `src/game/` | Pure deck, rules, scoring, state-machine, and validation logic |
-| `src/ai/` | Uniform-random Easy opponent using engine-provided legal actions |
+| `src/ai/` | Easy random and Medium rule-based opponents using engine-provided legal actions |
 | `src/storage/` | Versioned, validated browser save handling |
-| `src/app/` | React orchestration, persistence, and computer-turn scheduling |
+| `src/app/` | Solo/online orchestration, persistence, and computer-turn scheduling |
+| `src/multiplayer/` | Supabase client, private-room transport, seat mapping, and state redaction |
 | `src/components/` | Accessible home, table, controls, dialogs, and result views |
 | `src/audio/` | Optional synthesized sound cues and preference handling |
 | `src/styles/` | Responsive fantasy-tavern presentation |
 | `e2e/` | Seeded Playwright full-match, resume, accessibility, and viewport checks |
+| `supabase/migrations/` | Online room schema, secured RPCs, RLS, and Realtime configuration |
 | `.github/workflows/deploy.yml` | Tested GitHub Pages build and deployment |
 
 ## Deployment

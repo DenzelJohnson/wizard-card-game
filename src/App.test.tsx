@@ -2,14 +2,20 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useWizardGame, type WizardGameController } from './app/useWizardGame';
+import { useOnlineGame } from './app/useOnlineGame';
+import type { OnlineGameController } from './multiplayer/types';
 import { App, developmentSeedForSearch } from './App';
 import { createMatch, legalActions } from './game/state';
 
 vi.mock('./app/useWizardGame', () => ({
   useWizardGame: vi.fn(),
 }));
+vi.mock('./app/useOnlineGame', () => ({
+  useOnlineGame: vi.fn(),
+}));
 
 const useWizardGameMock = vi.mocked(useWizardGame);
+const useOnlineGameMock = vi.mocked(useOnlineGame);
 
 function controller(
   overrides: Partial<WizardGameController> = {},
@@ -29,10 +35,30 @@ function controller(
   };
 }
 
+function onlineController(overrides: Partial<OnlineGameController> = {}): OnlineGameController {
+  return {
+    status: 'closed', loading: false, error: null, room: null, members: [], userId: null,
+    localPlayerId: null, state: null, legalActions: [], open: vi.fn(), leave: vi.fn(),
+    createRoom: vi.fn(), joinRoom: vi.fn(), startGame: vi.fn(), dispatch: vi.fn(),
+    acknowledgeRound: vi.fn(), ...overrides,
+  };
+}
+
 describe('App', () => {
   beforeEach(() => {
     useWizardGameMock.mockReset();
+    useOnlineGameMock.mockReset();
+    useOnlineGameMock.mockReturnValue(onlineController());
     window.history.replaceState({}, '', '/');
+  });
+
+  it('opens the online room flow from home', () => {
+    const online = onlineController();
+    useOnlineGameMock.mockReturnValue(online);
+    useWizardGameMock.mockReturnValue(controller());
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Play Online' }));
+    expect(online.open).toHaveBeenCalledOnce();
   });
 
   it('shows the Wizard home screen from the controller', () => {

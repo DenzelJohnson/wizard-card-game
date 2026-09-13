@@ -50,6 +50,18 @@ function restrictedComputerPlayState(): GameState {
 }
 
 describe('chooseEasyAction', () => {
+  it('can drive a caller-provided computer seat in an online game', () => {
+    const state = {
+      ...createMatch(42),
+      phase: 'bidding' as const,
+      activePlayerId: 'human' as const,
+    };
+
+    expect(chooseEasyAction(state, ['human'])?.action).toMatchObject({
+      type: 'PLACE_BID',
+      playerId: 'human',
+    });
+  });
   it('selects an engine legal bid for the active computer player', () => {
     const state = computerBiddingState();
     const result = chooseEasyAction(state);

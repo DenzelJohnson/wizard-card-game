@@ -459,8 +459,150 @@ button.mode-card--medium:focus-visible { transform: translateY(-0.25rem); }
 }
 
 .home-screen__secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
   margin-block-start: var(--space-5);
 }
+
+.button--online {
+  color: #f8fff9;
+  border-color: #80d6b1;
+  background: linear-gradient(180deg, #28775d, #124b3c);
+  box-shadow: 0 0.45rem 1.2rem rgb(0 0 0 / 28%), 0 0 1.5rem rgb(60 164 120 / 16%);
+}
+
+.online-screen {
+  display: grid;
+  min-block-size: 100vh;
+  min-block-size: 100svh;
+  place-items: center;
+  padding: clamp(var(--space-3), 4vw, var(--space-7));
+  background:
+    radial-gradient(circle at 50% 25%, rgb(35 133 100 / 20%), transparent 32rem),
+    linear-gradient(rgb(8 9 12 / 30%), rgb(8 9 12 / 75%));
+}
+
+.online-panel {
+  inline-size: min(100%, 52rem);
+  padding: clamp(var(--space-5), 5vw, var(--space-7));
+  border: 1px solid var(--color-gold-dark);
+  border-radius: var(--radius-xl);
+  color: var(--color-cream);
+  background: linear-gradient(155deg, rgb(62 34 25 / 98%), rgb(22 18 20 / 99%));
+  box-shadow: var(--shadow-deep), var(--shadow-inset-wood);
+  text-align: center;
+}
+
+.online-panel h1 {
+  margin-block-end: var(--space-5);
+  color: var(--color-gold-bright);
+  font-size: clamp(2.3rem, 7vw, 4rem);
+}
+
+.online-kicker {
+  margin-block-end: var(--space-1);
+  color: #a8dbc8;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.online-field {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 auto var(--space-4);
+  text-align: start;
+}
+
+.online-field > span,
+.online-difficulty legend {
+  color: var(--color-gold-bright);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.online-field input,
+.online-field select {
+  inline-size: 100%;
+  min-block-size: 3rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid rgb(240 203 114 / 48%);
+  border-radius: var(--radius-md);
+  color: var(--color-ink);
+  background: var(--color-parchment-light);
+}
+
+.online-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-block: var(--space-5);
+}
+
+.online-entry-card {
+  display: flex;
+  min-block-size: 18rem;
+  flex-direction: column;
+  padding: var(--space-5);
+  border: 1px solid rgb(240 203 114 / 28%);
+  border-radius: var(--radius-lg);
+  background: rgb(9 29 26 / 58%);
+}
+
+.online-entry-card h2 { color: var(--color-gold-bright); }
+.online-entry-card > .button { margin-block-start: auto; }
+
+.online-difficulty {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3);
+  border: 1px solid rgb(240 203 114 / 22%);
+  border-radius: var(--radius-md);
+}
+
+.online-difficulty label { display: flex; align-items: center; gap: var(--space-1); }
+.online-error { color: #ffb6b2; font-weight: 750; }
+.online-waiting { color: #bce6d5; }
+.online-room-count { color: #d6c2a1; }
+
+.online-roster {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  list-style: none;
+}
+
+.online-roster li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgb(240 203 114 / 22%);
+  border-radius: var(--radius-md);
+  background: rgb(8 41 34 / 55%);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 750;
+}
+
+.online-roster small {
+  color: #a8dbc8;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.online-panel--lobby > .button { margin: var(--space-2); }
 
 .fan-notice {
   margin: var(--space-4) 0 0;
@@ -482,6 +624,10 @@ button.mode-card--medium:focus-visible { transform: translateY(-0.25rem); }
   .mode-selector__grid {
     grid-template-columns: 1fr;
   }
+
+  .online-screen { align-items: start; padding: var(--space-2); }
+  .online-panel { padding: var(--space-5) var(--space-3); border-radius: var(--radius-lg); }
+  .online-entry-grid { grid-template-columns: 1fr; }
 
   .mode-card {
     min-block-size: 8.5rem;

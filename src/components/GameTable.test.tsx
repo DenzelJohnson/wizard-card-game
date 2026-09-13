@@ -142,6 +142,71 @@ function scoredState(phase: 'round-result' | 'match-result' = 'round-result'): G
 }
 
 describe('GameTable', () => {
+  it('renders the assigned online seat as the local hand and action owner', () => {
+    const state = displayState({
+      players: createMatch(42).players.map((player) =>
+        player.id === 'ember' ? { ...player, name: 'Alex', isHuman: true } : player,
+      ),
+      phase: 'bidding',
+      activePlayerId: 'ember',
+    });
+    const onAction = vi.fn();
+
+    render(
+      <GameTable
+        state={state}
+        legalActions={legalActions(state)}
+        localPlayerId="ember"
+        onAction={onAction}
+      />,
+    );
+
+    expect(screen.getByRole('group', { name: 'Your hand, 3 cards' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Alex seat' })).toHaveClass('player-seat--bottom');
+    expect(screen.getByRole('region', { name: 'You seat' })).toHaveClass('player-seat--right');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bid 2' }));
+    expect(onAction).toHaveBeenCalledWith({ type: 'PLACE_BID', playerId: 'ember', bid: 2 });
+  });
+
+  it('renders the correct opponent stacks from a redacted online state', () => {
+    const state = displayState({
+      hands: {
+        human: [],
+        ember: displayState().hands.ember,
+        rowan: [],
+        mira: [],
+      },
+    });
+
+    render(
+      <GameTable
+        state={state}
+        legalActions={legalActions(state)}
+        localPlayerId="ember"
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('img', { name: 'You has 3 hidden cards' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Rowan has 3 hidden cards' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Mira has 3 hidden cards' })).toBeInTheDocument();
+  });
+
+  it('can hide solo restart controls for an online match', () => {
+    const state = displayState();
+    render(
+      <GameTable
+        state={state}
+        legalActions={legalActions(state)}
+        canRestartMatch={false}
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Restart' })).not.toBeInTheDocument();
+  });
+
   it('exposes only non-sensitive game state and legal visible-card browser hooks', () => {
     const state = restrictedFollowSuitState();
     const { container } = render(

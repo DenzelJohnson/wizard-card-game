@@ -1,16 +1,17 @@
 import { nextRandom } from '../game/deck';
 import { legalActions } from '../game/state';
-import type { GameAction, GameState, RngState } from '../game/types';
+import type { GameAction, GameState, PlayerId, RngState } from '../game/types';
 
-const COMPUTER_IDS = new Set(['ember', 'rowan', 'mira']);
+const DEFAULT_COMPUTER_IDS: readonly PlayerId[] = ['ember', 'rowan', 'mira'];
 const DECISION_PHASES = new Set(['choose-trump', 'bidding', 'playing']);
 
 export function chooseEasyAction(
   state: GameState,
+  computerIds: readonly PlayerId[] = DEFAULT_COMPUTER_IDS,
 ): { action: GameAction; rng: RngState } | null {
   if (
     state.activePlayerId === null ||
-    !COMPUTER_IDS.has(state.activePlayerId) ||
+    !computerIds.includes(state.activePlayerId) ||
     !DECISION_PHASES.has(state.phase)
   ) {
     return null;
