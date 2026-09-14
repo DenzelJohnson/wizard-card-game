@@ -433,6 +433,11 @@
   opacity: 0.44;
 }
 
+[data-phase='bidding'] .human-hand .playing-card--disabled:disabled {
+  filter: none;
+  opacity: 1;
+}
+
 .bid-panel__locked {
   margin: var(--space-2) 0 0;
   color: var(--color-cream);

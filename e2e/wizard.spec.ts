@@ -322,7 +322,7 @@ test('keeps dealer face-up cards clear of bid and trick counters', async ({ page
   }
 });
 
-test('enlarges human hand cards and clearly greys unavailable cards', async ({ page }, testInfo) => {
+test('keeps human hand cards full-color while choosing a bid', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium', 'desktop hand-size coverage');
 
   await openFresh(page, SEED_PATH);
@@ -344,8 +344,8 @@ test('enlarges human hand cards and clearly greys unavailable cards', async ({ p
     .evaluate((element) => element.getBoundingClientRect().width);
 
   expect(presentation.width).toBeGreaterThanOrEqual(tableCardWidth * 1.25);
-  expect(Number(presentation.opacity)).toBeLessThan(0.5);
-  expect(presentation.filter).not.toBe('none');
+  expect(presentation.opacity).toBe('1');
+  expect(presentation.filter).toBe('none');
 });
 
 test('uses a thick purple highlight for trump cards in the human hand', async ({ page }, testInfo) => {
