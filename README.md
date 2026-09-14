@@ -126,6 +126,11 @@ Supabase project URL and publishable browser key; no database password or secret
 used by the client. Each browser identity may host one active room at a time, and rooms inactive
 for 24 hours are removed when a new room is created.
 
+During online bidding, every human player chooses a final bid at the same time. A chosen bid is
+locked immediately, and no bid values are shown until every human has submitted; the host then
+adds any computer bids and reveals the completed round together. During card play, cards that
+cannot legally be played are disabled and visibly greyed out.
+
 ## Save, resume, and settings
 
 An unfinished match is saved automatically in browser `localStorage` after accepted game-state

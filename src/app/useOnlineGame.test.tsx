@@ -28,6 +28,7 @@ function backend(overrides: Partial<OnlineBackend> = {}): OnlineBackend {
     loadHostState: vi.fn().mockResolvedValue(null),
     loadPlayerState: vi.fn().mockResolvedValue(null),
     loadPendingActions: vi.fn().mockResolvedValue([]),
+    hasBidLock: vi.fn().mockResolvedValue(false),
     commitState: vi.fn().mockResolvedValue(1),
     submitAction: vi.fn().mockResolvedValue(undefined),
     subscribe: vi.fn().mockReturnValue(() => undefined),
@@ -171,7 +172,57 @@ describe('useOnlineGame', () => {
     await waitFor(() => expect(onlineBackend.submitAction).toHaveBeenCalledWith('room-1', 4, action));
   });
 
-  it('unlocks a guest action after reconciliation if no newer state arrives', async () => {
+  it('offers every simultaneous bid to an online player even when another seat is engine-active', async () => {
+    const guestState = {
+      ...createMatch(42), phase: 'bidding' as const, round: 3, activePlayerId: 'human' as const,
+      hands: { human: [], ember: [], rowan: [], mira: [] },
+    };
+    const onlineBackend = backend({
+      ensureUser: vi.fn().mockResolvedValue('guest'),
+      loadRoom: vi.fn().mockResolvedValue({ ...room, status: 'playing', revision: 4 }),
+      loadPlayerState: vi.fn().mockResolvedValue({ state: guestState, revision: 4 }),
+    });
+    const { result } = renderHook(() => useOnlineGame({ backend: onlineBackend }));
+
+    act(() => result.current.open());
+    act(() => result.current.joinRoom({ displayName: 'Alex', roomCode: 'ABC123' }));
+    await waitFor(() => expect(result.current.status).toBe('game'));
+
+    expect(result.current.legalActions).toEqual([
+      { type: 'PLACE_BID', playerId: 'ember', bid: 0 },
+      { type: 'PLACE_BID', playerId: 'ember', bid: 1 },
+      { type: 'PLACE_BID', playerId: 'ember', bid: 2 },
+      { type: 'PLACE_BID', playerId: 'ember', bid: 3 },
+    ]);
+  });
+
+  it('locks a submitted online bid before the other players reveal theirs', async () => {
+    const guestState = {
+      ...createMatch(42), phase: 'bidding' as const, activePlayerId: 'human' as const,
+      hands: { human: [], ember: [], rowan: [], mira: [] },
+    };
+    const submitAction = vi.fn().mockResolvedValue(undefined);
+    const onlineBackend = backend({
+      ensureUser: vi.fn().mockResolvedValue('guest'),
+      loadRoom: vi.fn().mockResolvedValue({ ...room, status: 'playing', revision: 4 }),
+      loadPlayerState: vi.fn().mockResolvedValue({ state: guestState, revision: 4 }),
+      submitAction,
+    });
+    const { result } = renderHook(() => useOnlineGame({ backend: onlineBackend }));
+
+    act(() => result.current.open());
+    act(() => result.current.joinRoom({ displayName: 'Alex', roomCode: 'ABC123' }));
+    await waitFor(() => expect(result.current.status).toBe('game'));
+    act(() => result.current.dispatch({ type: 'PLACE_BID', playerId: 'ember', bid: 1 }));
+
+    await waitFor(() => expect(result.current.bidLocked).toBe(true));
+    expect(submitAction).toHaveBeenCalledWith('room-1', 4, {
+      type: 'PLACE_BID', playerId: 'ember', bid: 1,
+    });
+    expect(result.current.legalActions).toEqual([]);
+  });
+
+  it('keeps a locked guest bid final when no newer state arrives', async () => {
     const guestState = {
       ...createMatch(42), phase: 'bidding' as const, activePlayerId: 'ember' as const,
       hands: { human: [], ember: [], rowan: [], mira: [] },
@@ -197,7 +248,8 @@ describe('useOnlineGame', () => {
     await new Promise((resolve) => setTimeout(resolve, 30));
     act(() => result.current.dispatch(action));
 
-    await waitFor(() => expect(submitAction).toHaveBeenCalledTimes(2));
+    expect(submitAction).toHaveBeenCalledOnce();
+    expect(result.current.bidLocked).toBe(true);
   });
 
   it('asks the backend to close an active room when the host leaves', async () => {
@@ -217,7 +269,7 @@ describe('useOnlineGame', () => {
     expect(result.current.status).toBe('closed');
   });
 
-  it('commits an authenticated guest action received by the host subscription', async () => {
+  it('commits a complete sealed bid batch received by the host subscription', async () => {
     let handlers: Parameters<OnlineBackend['subscribe']>[3] | undefined;
     let revision = 0;
     const commitState = vi.fn().mockImplementation(async () => ++revision);
@@ -247,13 +299,18 @@ describe('useOnlineGame', () => {
     const dealt = commitState.mock.calls[1]?.[2];
     expect(dealt.activePlayerId).toBe('ember');
 
-    const jsonbOrderedAction = JSON.parse(
-      '{"bid":0,"type":"PLACE_BID","playerId":"ember"}',
-    ) as Parameters<NonNullable<typeof handlers>['onAction']>[0];
-    act(() => handlers?.onAction(jsonbOrderedAction, 2));
+    vi.mocked(onlineBackend.loadPendingActions).mockResolvedValue([
+      { action: { type: 'PLACE_BID', playerId: 'human', bid: 1 }, expectedRevision: 2 },
+      { action: { type: 'PLACE_BID', playerId: 'ember', bid: 0 }, expectedRevision: 2 },
+    ]);
+    act(() => handlers?.onAction({ type: 'PLACE_BID', playerId: 'ember', bid: 0 }, 2));
 
     await waitFor(() => expect(commitState).toHaveBeenCalledTimes(3));
-    expect(commitState.mock.calls[2]?.[2].bids).toContainEqual({ playerId: 'ember', bid: 0 });
+    expect(commitState.mock.calls[2]?.[2].phase).toBe('playing');
+    expect(commitState.mock.calls[2]?.[2].bids).toEqual(expect.arrayContaining([
+      { playerId: 'human', bid: 1 },
+      { playerId: 'ember', bid: 0 },
+    ]));
   });
 
   it('skips malformed queued actions when reconciling a host connection', async () => {
@@ -287,12 +344,14 @@ describe('useOnlineGame', () => {
     vi.mocked(onlineBackend.loadHostState).mockResolvedValue({ state: dealt, revision: 2 });
     vi.mocked(onlineBackend.loadPendingActions).mockResolvedValue([
       { action: {} as never, expectedRevision: 2 },
+      { action: { type: 'PLACE_BID', playerId: 'human', bid: 1 }, expectedRevision: 2 },
       { action: { type: 'PLACE_BID', playerId: 'ember', bid: 0 }, expectedRevision: 2 },
     ]);
 
     act(() => handlers?.onConnection(true));
 
     await waitFor(() => expect(commitState).toHaveBeenCalledTimes(3));
+    expect(commitState.mock.calls[2]?.[2].phase).toBe('playing');
     expect(commitState.mock.calls[2]?.[2].bids).toContainEqual({ playerId: 'ember', bid: 0 });
   });
 });

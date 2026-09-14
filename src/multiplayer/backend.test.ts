@@ -53,6 +53,17 @@ describe('Supabase online backend', () => {
     });
   });
 
+  it('asks only whether the current player has locked a bid for this revision', async () => {
+    const client = fakeClient(true);
+    const backend = createSupabaseBackend(client as never);
+
+    await expect(backend.hasBidLock('room-1', 4)).resolves.toBe(true);
+    expect(client.rpc).toHaveBeenCalledWith('has_wizard_bid_lock', {
+      p_room_id: 'room-1',
+      p_expected_revision: 4,
+    });
+  });
+
   it('accepts player-state updates only for the subscribed room and user', () => {
     type Registration = {
       readonly event: string;

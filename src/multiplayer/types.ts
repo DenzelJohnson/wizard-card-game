@@ -42,6 +42,7 @@ export interface OnlineGameController {
   readonly localPlayerId: PlayerId | null;
   readonly state: GameState | null;
   readonly legalActions: readonly GameAction[];
+  readonly bidLocked: boolean;
   open(): void;
   leave(): void;
   createRoom(input: CreateRoomInput): void;

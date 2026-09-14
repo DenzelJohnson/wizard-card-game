@@ -38,7 +38,7 @@ function controller(
 function onlineController(overrides: Partial<OnlineGameController> = {}): OnlineGameController {
   return {
     status: 'closed', loading: false, error: null, room: null, members: [], userId: null,
-    localPlayerId: null, state: null, legalActions: [], open: vi.fn(), leave: vi.fn(),
+    localPlayerId: null, state: null, legalActions: [], bidLocked: false, open: vi.fn(), leave: vi.fn(),
     createRoom: vi.fn(), joinRoom: vi.fn(), startGame: vi.fn(), dispatch: vi.fn(),
     acknowledgeRound: vi.fn(), ...overrides,
   };

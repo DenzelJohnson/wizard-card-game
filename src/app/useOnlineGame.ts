@@ -12,6 +12,7 @@ import {
   stateWithRoomMembers,
   type RoomMember,
 } from '../multiplayer/model';
+import { sealedBidState } from '../multiplayer/sealedBidding';
 import type { CreateRoomInput, JoinRoomInput, OnlineGameController, WizardRoom } from '../multiplayer/types';
 
 const DECISION_DELAY_MS = 450;
@@ -46,6 +47,7 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
   const [userId, setUserId] = useState<string | null>(null);
   const [localPlayerId, setLocalPlayerId] = useState<PlayerId | null>(null);
   const [state, setState] = useState<GameState | null>(null);
+  const [bidLocked, setBidLockedState] = useState(false);
   const roomRef = useRef<WizardRoom | null>(null);
   const membersRef = useRef<readonly RoomMember[]>([]);
   const userIdRef = useRef<string | null>(null);
@@ -55,6 +57,8 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
   const committingRef = useRef(false);
   const pendingGuestActionRef = useRef(false);
   const pendingGuestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bidLockedRef = useRef(false);
+  const bidLockRefreshGenerationRef = useRef(0);
   const subscriptionGenerationRef = useRef(0);
   const sessionGenerationRef = useRef(0);
   const roomRefreshGenerationRef = useRef(0);
@@ -69,6 +73,11 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
       clearTimeout(pendingGuestTimerRef.current);
       pendingGuestTimerRef.current = null;
     }
+  }, []);
+
+  const setBidLocked = useCallback((next: boolean) => {
+    bidLockedRef.current = next;
+    setBidLockedState(next);
   }, []);
 
   const setRoom = useCallback((next: WizardRoom | null) => {
@@ -90,6 +99,8 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
     revisionRef.current = 0;
     committingRef.current = false;
     clearPendingGuestAction();
+    bidLockRefreshGenerationRef.current += 1;
+    setBidLocked(false);
     subscriptionGenerationRef.current += 1;
     sessionGenerationRef.current += 1;
     roomRefreshGenerationRef.current += 1;
@@ -103,7 +114,7 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
     setState(null);
     setError(null);
     setLoading(false);
-  }, [clearPendingGuestAction]);
+  }, [clearPendingGuestAction, setBidLocked]);
 
   const refreshMembers = useCallback(async () => {
     const currentRoom = roomRef.current;
@@ -248,13 +259,19 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
       ) return;
       const valid = pending.find(({ action, expectedRevision }) =>
         expectedRevision === revision &&
+        action.type !== 'PLACE_BID' &&
         engineLegalActions(authoritative).some((candidate) => actionsEqual(candidate, action)),
       );
+      const sealed = sealedBidState(authoritative, pending.map(({ action }) => action), membersRef.current);
+      if (sealed !== null) {
+        void commitHostState(authoritative, sealed);
+        return;
+      }
       if (valid !== undefined) applyHostAction(valid.action, valid.expectedRevision);
     } catch (reason) {
       setError(multiplayerErrorMessage(reason));
     }
-  }, [applyHostAction, backend, setRoom]);
+  }, [applyHostAction, backend, commitHostState, setRoom]);
   reconcileHostRef.current = () => { void reconcileHost(); };
 
   const enterRoom = useCallback(async (operation: () => Promise<{ roomId: string; seatId: PlayerId }>) => {
@@ -336,7 +353,12 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
         setRoomState((current) => current === null ? current : { ...current, revision });
       },
       onAction: (action, expectedRevision) => {
-        if (isCurrent()) applyHostAction(action, expectedRevision);
+        if (!isCurrent()) return;
+        if (action.type === 'PLACE_BID') {
+          void reconcileHost();
+          return;
+        }
+        applyHostAction(action, expectedRevision);
       },
       onConnection: (connected) => {
         if (!connected || !isCurrent()) return;
@@ -355,6 +377,37 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
   }, [applyHostAction, backend, clearPendingGuestAction, reconcileHost, refreshMembers, refreshRoom, subscriptionEnabled, userId]);
 
   useEffect(() => {
+    const currentRoom = roomRef.current;
+    const current = state;
+    const currentUserId = userIdRef.current;
+    const seatId = localPlayerIdRef.current;
+    const generation = bidLockRefreshGenerationRef.current + 1;
+    bidLockRefreshGenerationRef.current = generation;
+
+    if (
+      status !== 'game' || currentRoom === null || current === null || currentUserId === null ||
+      seatId === null || current.phase !== 'bidding'
+    ) {
+      setBidLocked(false);
+      return;
+    }
+
+    const revision = revisionRef.current;
+    void backend.hasBidLock(currentRoom.id, revision).then((locked) => {
+      if (
+        bidLockRefreshGenerationRef.current !== generation || roomRef.current?.id !== currentRoom.id ||
+        userIdRef.current !== currentUserId || localPlayerIdRef.current !== seatId ||
+        revisionRef.current !== revision || authoritativeStateRef.current?.phase === 'playing'
+      ) return;
+      setBidLocked(locked);
+    }).catch((reason) => {
+      if (bidLockRefreshGenerationRef.current === generation && roomRef.current?.id === currentRoom.id) {
+        setError(multiplayerErrorMessage(reason));
+      }
+    });
+  }, [backend, localPlayerId, room, setBidLocked, state, status, userId]);
+
+  useEffect(() => {
     const currentRoom = room;
     const current = state;
     if (status !== 'game' || currentRoom === null || current === null || userId !== currentRoom.host_user_id) return;
@@ -369,7 +422,7 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
     }
 
     const bots = botSeatsForHumanCount(currentRoom.human_seat_count);
-    if (current.activePlayerId !== null && bots.includes(current.activePlayerId) && ['choose-trump', 'bidding', 'playing'].includes(current.phase)) {
+    if (current.activePlayerId !== null && bots.includes(current.activePlayerId) && ['choose-trump', 'playing'].includes(current.phase)) {
       const timer = setTimeout(() => {
         const choice = current.difficulty === 'medium'
           ? chooseMediumAction(current, bots)
@@ -407,6 +460,19 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
     const seatId = localPlayerIdRef.current;
     const current = authoritativeStateRef.current ?? state;
     if (currentRoom === null || currentUserId === null || seatId === null || current === null || !actionBelongsToSeat(action, seatId)) return;
+    if (isOnlineBidAction(action, current, seatId)) {
+      if (bidLockedRef.current) return;
+      bidLockRefreshGenerationRef.current += 1;
+      setBidLocked(true);
+      void backend.submitAction(currentRoom.id, revisionRef.current, action).then(() => {
+        if (currentRoom.host_user_id === currentUserId) void reconcileHost();
+      }).catch((reason) => {
+        setBidLocked(false);
+        setError(multiplayerErrorMessage(reason));
+        void refreshRoom();
+      });
+      return;
+    }
     if (!engineLegalActions(current).some((candidate) => actionsEqual(candidate, action))) return;
     if (currentRoom.host_user_id === currentUserId) {
       applyHostAction(action);
@@ -423,7 +489,7 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
         void refreshRoom();
       });
     }
-  }, [applyHostAction, backend, clearPendingGuestAction, reconcileMs, refreshRoom, state]);
+  }, [applyHostAction, backend, clearPendingGuestAction, reconcileHost, reconcileMs, refreshRoom, setBidLocked, state]);
   const acknowledgeRound = useCallback(() => dispatch({ type: 'ACKNOWLEDGE_ROUND' }), [dispatch]);
   const leave = useCallback(() => {
     const currentRoom = roomRef.current;
@@ -434,13 +500,26 @@ export function useOnlineGame(options: OnlineGameOptions = {}): OnlineGameContro
 
   const legalActions = useMemo(() => {
     if (status !== 'game' || state === null || localPlayerId === null) return [];
+    if (state.phase === 'bidding') {
+      if (bidLocked) return [];
+      return Array.from({ length: state.round + 1 }, (_, bid) => ({
+        type: 'PLACE_BID' as const,
+        playerId: localPlayerId,
+        bid,
+      }));
+    }
     return engineLegalActions(state).filter((action) => actionBelongsToSeat(action, localPlayerId));
-  }, [localPlayerId, state, status]);
+  }, [bidLocked, localPlayerId, state, status]);
 
   return useMemo(() => ({
-    status, loading, error, room, members, userId, localPlayerId, state, legalActions,
+    status, loading, error, room, members, userId, localPlayerId, state, legalActions, bidLocked,
     open, leave, createRoom, joinRoom, startGame, dispatch, acknowledgeRound,
-  }), [acknowledgeRound, createRoom, dispatch, error, joinRoom, leave, legalActions, loading, localPlayerId, members, open, room, startGame, state, status, userId]);
+  }), [acknowledgeRound, bidLocked, createRoom, dispatch, error, joinRoom, leave, legalActions, loading, localPlayerId, members, open, room, startGame, state, status, userId]);
+}
+
+function isOnlineBidAction(action: GameAction, state: GameState, seatId: PlayerId): action is Extract<GameAction, { readonly type: 'PLACE_BID' }> {
+  return action.type === 'PLACE_BID' && state.phase === 'bidding' && action.playerId === seatId &&
+    Number.isInteger(action.bid) && action.bid >= 0 && action.bid <= state.round;
 }
 
 function actionsEqual(left: GameAction, right: GameAction): boolean {

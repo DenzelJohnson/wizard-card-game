@@ -419,6 +419,49 @@ describe('GameTable', () => {
     expect(onAction).toHaveBeenCalledWith({ type: 'PLACE_BID', playerId: 'human', bid: 2 });
   });
 
+  it('replaces online bid buttons with a sealed waiting status after the local bid locks', () => {
+    const state = findDealtState(
+      (candidate) => candidate.phase === 'bidding' && candidate.activePlayerId === 'human',
+      3,
+    );
+    render(
+      <GameTable
+        state={state}
+        legalActions={legalActions(state)}
+        onlineBidLocked
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('Bid locked');
+    expect(screen.queryByRole('button', { name: /^Bid \d+$/ })).not.toBeInTheDocument();
+  });
+
+  it('shows online bid choices even when a different seat is the sequential engine active player', () => {
+    const state = findDealtState(
+      (candidate) => candidate.phase === 'bidding' && candidate.activePlayerId === 'human',
+      2,
+    );
+    const emberBids = Array.from({ length: state.round + 1 }, (_, bid) => ({
+      type: 'PLACE_BID' as const,
+      playerId: 'ember' as const,
+      bid,
+    }));
+    const onAction = vi.fn();
+    render(
+      <GameTable
+        state={state}
+        legalActions={emberBids}
+        localPlayerId="ember"
+        simultaneousOnlineBidding
+        onAction={onAction}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bid 2' }));
+    expect(onAction).toHaveBeenCalledWith({ type: 'PLACE_BID', playerId: 'ember', bid: 2 });
+  });
+
   it('does not synthesize bid controls beyond the supplied legal actions', () => {
     const state = findDealtState(
       (candidate) => candidate.phase === 'bidding' && candidate.activePlayerId === 'human',

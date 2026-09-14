@@ -41,3 +41,23 @@ and `service_role`/secret API keys are never copied into the repository or brows
 - Anonymous identity persists per browser profile; there is no named-account recovery or invite
   notification system.
 - Private room codes are convenience identifiers, not passwords; RLS membership controls access.
+
+## Sealed simultaneous bidding extension
+
+Online bidding is a separate controller-level protocol layered on top of the unchanged sequential
+game engine. During a bidding phase, every human seat receives the complete 0-to-round bid range
+at the same time. Selecting a bid locks it permanently for the current room revision. The chosen
+value is stored in the existing host-only `wizard_actions` queue and never appears in a redacted
+player state. A member-facing RPC returns only whether that member has locked a bid, allowing a
+reconnected player to recover the waiting state without exposing a value or another player's status.
+
+Once the host sees a valid locked bid from every human seat, it independently generates each
+computer bid from the dealt state (Easy uses the match RNG; Medium uses its hand-strength estimate),
+then applies all four submitted values through the existing engine in canonical bidding order. That
+produces one optimistic host commit where the phase changes to playing and all bids become visible
+together. The solo controller continues to use the engine's normal one-seat-at-a-time bidding.
+
+The table displays a concise locked/waiting status after the local selection. Until the atomic
+commit arrives, it displays no bid counters for any seat. Separately, unavailable cards in the
+human hand—including follow-suit violations—remain native disabled buttons and use strong
+greyscale/dimming instead of the former full-colour disabled override.

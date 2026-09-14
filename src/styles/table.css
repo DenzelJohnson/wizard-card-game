@@ -429,8 +429,15 @@
 }
 
 .human-hand .playing-card--disabled:disabled {
-  filter: none;
-  opacity: 1;
+  filter: grayscale(0.9) saturate(0.18) brightness(0.62);
+  opacity: 0.44;
+}
+
+.bid-panel__locked {
+  margin: var(--space-2) 0 0;
+  color: var(--color-cream);
+  font-weight: 750;
+  text-align: center;
 }
 
 .human-hand .playing-card--trump {

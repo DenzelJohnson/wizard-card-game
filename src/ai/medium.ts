@@ -38,7 +38,7 @@ export function chooseMediumAction(
       (choice) => choice.type === 'CHOOSE_TRUMP' && choice.suit === suit,
     );
   } else if (state.phase === 'bidding') {
-    const estimate = estimateBid(state.hands[playerId], state.trump, state.round);
+    const estimate = estimateMediumBid(state.hands[playerId], state.trump, state.round);
     action = choices
       .filter(
         (choice): choice is Extract<GameAction, { type: 'PLACE_BID' }> =>
@@ -70,7 +70,7 @@ function suitScore(hand: readonly Card[], suit: Suit): number {
   }, 0);
 }
 
-function estimateBid(hand: readonly Card[], trump: Suit | null, round: number): number {
+export function estimateMediumBid(hand: readonly Card[], trump: Suit | null, round: number): number {
   const suitLengths = new Map<Suit, number>(SUITS.map((suit) => [suit, 0]));
   for (const card of hand) {
     if (card.kind === 'suited') {

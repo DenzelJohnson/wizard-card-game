@@ -23,6 +23,7 @@ export interface OnlineBackend {
   loadHostState(roomId: string): Promise<{ readonly state: GameState; readonly revision: number } | null>;
   loadPlayerState(roomId: string, userId: string): Promise<{ readonly state: GameState; readonly revision: number } | null>;
   loadPendingActions(roomId: string, revision: number): Promise<Array<{ readonly action: GameAction; readonly expectedRevision: number }>>;
+  hasBidLock(roomId: string, revision: number): Promise<boolean>;
   commitState(roomId: string, expectedRevision: number, state: GameState, playerStates: Readonly<Record<string, GameState>>): Promise<number>;
   submitAction(roomId: string, expectedRevision: number, action: GameAction): Promise<void>;
   subscribe(roomId: string, userId: string, isHost: boolean, handlers: SubscriptionHandlers): () => void;
@@ -87,6 +88,15 @@ export function createSupabaseBackend(client: SupabaseClient = supabase): Online
       const result = await client.from('wizard_actions').select('action,expected_revision').eq('room_id', roomId).eq('expected_revision', revision).order('id');
       if (result.error !== null) throw result.error;
       return (result.data ?? []).map((row) => ({ action: row.action as GameAction, expectedRevision: Number(row.expected_revision) }));
+    },
+    async hasBidLock(roomId, revision) {
+      const result = await client.rpc('has_wizard_bid_lock', {
+        p_room_id: roomId,
+        p_expected_revision: revision,
+      });
+      if (result.error !== null) throw result.error;
+      if (typeof result.data !== 'boolean') throw new Error('Supabase returned an invalid bid lock.');
+      return result.data;
     },
     async commitState(roomId, expectedRevision, state, playerStates) {
       const result = await client.rpc('commit_wizard_game_state', {

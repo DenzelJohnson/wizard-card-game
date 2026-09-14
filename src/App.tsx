@@ -17,6 +17,8 @@ export function App() {
       <GameTable
         state={online.state}
         legalActions={online.legalActions}
+        onlineBidLocked={online.bidLocked}
+        simultaneousOnlineBidding
         localPlayerId={online.localPlayerId}
         onAction={online.dispatch}
         onContinueRound={online.acknowledgeRound}

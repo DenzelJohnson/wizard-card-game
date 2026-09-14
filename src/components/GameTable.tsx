@@ -29,6 +29,8 @@ export interface GameTableProps {
   readonly soundOptions?: SoundControllerOptions;
   readonly localPlayerId?: PlayerId;
   readonly canRestartMatch?: boolean;
+  readonly onlineBidLocked?: boolean;
+  readonly simultaneousOnlineBidding?: boolean;
 }
 
 const HAND_SUIT_ORDER = { spades: 0, hearts: 1, clubs: 2, diamonds: 3 } as const;
@@ -45,6 +47,8 @@ export function GameTable({
   soundOptions,
   localPlayerId = 'human',
   canRestartMatch = true,
+  onlineBidLocked = false,
+  simultaneousOnlineBidding = false,
 }: GameTableProps) {
   const browserSounds = useSounds(soundOptions);
   const activeSounds = sounds ?? browserSounds;
@@ -58,7 +62,8 @@ export function GameTable({
     state.currentTrick[0]?.playerId ??
     (state.phase === 'playing' && state.currentTrick.length === 0 ? state.activePlayerId : null);
   const bidActions =
-    state.phase === 'bidding' && state.activePlayerId === localPlayerId
+    state.phase === 'bidding' && !onlineBidLocked &&
+    (simultaneousOnlineBidding || state.activePlayerId === localPlayerId)
       ? legalActions.filter(
           (action): action is Extract<GameAction, { readonly type: 'PLACE_BID' }> =>
             action.type === 'PLACE_BID' && action.playerId === localPlayerId,
@@ -178,9 +183,11 @@ export function GameTable({
         seatPositions={seatPositions}
       />
 
-      {bidActions.length > 0 || trumpActions.length > 0 ? (
+      {bidActions.length > 0 || trumpActions.length > 0 || (onlineBidLocked && state.phase === 'bidding') ? (
         <section className="decision-area" aria-label="Your decision">
-          {bidActions.length > 0 ? <BidPanel actions={bidActions} onAction={onAction} /> : null}
+          {bidActions.length > 0 || onlineBidLocked ? (
+            <BidPanel actions={bidActions} locked={onlineBidLocked} onAction={onAction} />
+          ) : null}
           {trumpActions.length > 0 ? (
             <TrumpPanel actions={trumpActions} onAction={onAction} />
           ) : null}

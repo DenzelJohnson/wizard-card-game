@@ -93,6 +93,29 @@ test('creates a private room, joins from another browser, and starts a shared ga
     });
     expect(malformedAction.status).toBeGreaterThanOrEqual(400);
 
+    for (let transition = 0; transition < 24; transition += 1) {
+      const snapshot = await readGameSnapshot(host);
+      if (snapshot.phase === 'bidding') break;
+      if (snapshot.phase === 'choose-trump' && snapshot.activePlayer === 'human') {
+        await host.getByRole('group', { name: 'Choose trump' }).getByRole('button').first().click();
+      } else if (snapshot.phase === 'choose-trump' && snapshot.activePlayer === 'ember') {
+        await guest.getByRole('group', { name: 'Choose trump' }).getByRole('button').first().click();
+      }
+      await waitForGameChange(host, snapshot.signature);
+    }
+
+    await expect(host.getByRole('button', { name: /^Bid \d+$/ }).first()).toBeEnabled();
+    await expect(guest.getByRole('button', { name: /^Bid \d+$/ }).first()).toBeEnabled();
+    await host.getByRole('button', { name: /^Bid \d+$/ }).first().click();
+    await expect(host.getByRole('status')).toHaveText(/Bid locked/i);
+    for (const text of await host.locator('.seat-table-stats').allTextContents()) {
+      expect(text).not.toContain('Bid');
+    }
+    await guest.getByRole('button', { name: /^Bid \d+$/ }).first().click();
+    await expect.poll(async () => (await readGameSnapshot(host)).phase).toBe('playing');
+    await expect(host.getByLabel('Denzel round stats')).toContainText('Bid');
+    await expect(guest.getByLabel('Alex round stats')).toContainText('Bid');
+
     let guestActionReachedHost = false;
     for (let transition = 0; transition < 24 && !guestActionReachedHost; transition += 1) {
       const hostBefore = await readGameSnapshot(host);
@@ -299,7 +322,7 @@ test('keeps dealer face-up cards clear of bid and trick counters', async ({ page
   }
 });
 
-test('enlarges human hand cards without fading their disabled state', async ({ page }, testInfo) => {
+test('enlarges human hand cards and clearly greys unavailable cards', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium', 'desktop hand-size coverage');
 
   await openFresh(page, SEED_PATH);
@@ -321,8 +344,8 @@ test('enlarges human hand cards without fading their disabled state', async ({ p
     .evaluate((element) => element.getBoundingClientRect().width);
 
   expect(presentation.width).toBeGreaterThanOrEqual(tableCardWidth * 1.25);
-  expect(presentation.opacity).toBe('1');
-  expect(presentation.filter).toBe('none');
+  expect(Number(presentation.opacity)).toBeLessThan(0.5);
+  expect(presentation.filter).not.toBe('none');
 });
 
 test('uses a thick purple highlight for trump cards in the human hand', async ({ page }, testInfo) => {
